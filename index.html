@@ -42,9 +42,16 @@
       font-size: 14px;
     }
 
+    .pacto-top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
     .pacto-header {
       font-weight: 600;
-      margin-bottom: 8px;
     }
 
     .pacto-layout {
@@ -163,7 +170,7 @@
     }
 
     .pacto-summary {
-      margin: 16px 0 8px;
+      margin: 8px 0;
       font-size: 14px;
       font-weight: 500;
     }
@@ -220,13 +227,13 @@
 
     .pacto-meta {
       display: flex;
-      justify-content: space-between;
+      justify-content: flex-end;
       align-items: center;
       gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
       font-size: 12px;
       color: #555;
+      flex-wrap: wrap;
+      text-align: right;
     }
 
     .refresh-btn {
@@ -261,12 +268,31 @@
       table {
         font-size: 12px;
       }
+
+      .pacto-top-bar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .pacto-meta {
+        justify-content: flex-start;
+        text-align: left;
+      }
     }
   </style>
 </head>
 <body>
   <div class="pactometro-widget" data-total-seats="65">
-    <div class="pacto-header">Calculadora de pactos 21D</div>
+    <!-- BARRA SUPERIOR: TÍTULO + META (ARRIBA A LA DERECHA) -->
+    <div class="pacto-top-bar">
+      <div class="pacto-header">Calculadora de pactos 21D</div>
+      <div class="pacto-meta">
+        <span id="last-update-label">Última actualización: —</span>
+        <button type="button" class="refresh-btn" id="refresh-btn">
+          Actualizar datos
+        </button>
+      </div>
+    </div>
 
     <div class="pacto-layout">
       <!-- IZQUIERDA: TABLA -->
@@ -309,13 +335,6 @@
 
         <div class="pacto-summary" id="pacto-summary">
           Selecciona partidos para formar una mayoría.
-        </div>
-
-        <div class="pacto-meta">
-          <span id="last-update-label">Última actualización: —</span>
-          <button type="button" class="refresh-btn" id="refresh-btn">
-            Actualizar datos
-          </button>
         </div>
 
         <button type="button" class="reset-btn" id="reset-btn">
@@ -652,9 +671,9 @@
       renderPartyList();
       updateTotals();
 
-      // Carga inicial desde Supabase y refresco automático cada 30 segundos
+      // Carga inicial desde Supabase y refresco automático cada 2 minutos (120000 ms)
       loadDataFromSupabase(false);
-      setInterval(() => loadDataFromSupabase(true), 30000);
+      setInterval(() => loadDataFromSupabase(true), 120000);
 
       window.addEventListener('load', sendHeightToParent);
       window.addEventListener('resize', () => {
