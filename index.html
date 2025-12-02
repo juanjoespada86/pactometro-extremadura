@@ -10,6 +10,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+  <!-- Supabase JS (UMD) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
   <style>
     :root {
       --bg: #ffffff;
@@ -284,52 +287,16 @@
 
   <script>
     window.addEventListener('DOMContentLoaded', function () {
-      // ===== DATOS (provisionales) =====
+      // ===== CONFIGURACIÓN SUPABASE =====
+      const supabaseUrl = 'https://xllvmudwstmeqvpcbzhs.supabase.co';
+      const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhsbHZtdWR3c3RtZXF2cGNiemhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2Nzc2NjEsImV4cCI6MjA4MDI1MzY2MX0.cxLTnkEYd8Vj34ISZcQvs_CdRjNE3x4eLl7t9NY_13A';
+      const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+      // ===== ESTADO DE LA APLICACIÓN =====
       const data = {
         totalSeats: 65,
-        parties: [
-          {
-            id: 'pp',
-            name: 'PP',
-            color: '#0070c0',
-            seats2023: 28,
-            seats2025: 26, // actualizar cuando haya dato real
-            vote2025: null
-          },
-          {
-            id: 'psoe',
-            name: 'PSOE',
-            color: '#e31837',
-            seats2023: 28,
-            seats2025: 30,
-            vote2025: null
-          },
-          {
-            id: 'vox',
-            name: 'VOX',
-            color: '#53a318',
-            seats2023: 5,
-            seats2025: 5,
-            vote2025: null
-          },
-          {
-            id: 'up',
-            name: 'Unidas Podemos',
-            color: '#8c2c8d',
-            seats2023: 4,
-            seats2025: 0, // 0 escaños -> no se mostrará
-            vote2025: null
-          }
-        ]
+        parties: [] // se rellenará desde Supabase
       };
-
-      // Diferencia de escaños
-      data.parties.forEach(p => {
-        p.diffSeats = p.seats2025 - p.seats2023;
-      });
-
-      // Ordenar por escaños 2025 (descendente)
-      data.parties.sort((a, b) => b.seats2025 - a.seats2025);
 
       // ===== REFERENCIAS DOM =====
       const totalSeatsMaxEl      = document.getElementById('total-seats-max');
@@ -359,6 +326,69 @@
         majorityMarkerEl.style.left = majorityPercent + '%';
         majorityTextEl.style.left   = majorityPercent + '%';
         majorityTextEl.textContent  = 'Mayoría: ' + majority;
+      }
+
+      // ===== UTILIDADES =====
+
+      function getPartyColor(partyId, partyName) {
+        const map = {
+          pp:   '#0070c0',
+          psoe: '#e31837',
+          vox:  '#53a318',
+          up:   '#8c2c8d'
+          // añade aquí más partidos si los necesitas
+        };
+        const key = (partyId || partyName || '').toString().toLowerCase();
+        if (map[key]) return map[key];
+        return '#666666'; // color por defecto
+      }
+
+      function getSelectedPartyIds() {
+        return Array.from(document.querySelectorAll('.party-checkbox:checked'))
+          .map(chk => chk.getAttribute('data-party-id'));
+      }
+
+      // ===== CARGA DE DATOS DESDE SUPABASE =====
+
+      async function loadDataFromSupabase(preserveSelection = true) {
+        const previouslySelected = preserveSelection ? getSelectedPartyIds() : [];
+
+        try {
+          const { data: rows, error } = await supabase
+            .from('pactometro_results')
+            .select('party_id, party_name, seats_2023, seats_2025, vote_pct_2025')
+            .order('seats_2025', { ascending: false });
+
+          if (error) {
+            console.error('Error obteniendo datos de Supabase:', error);
+            return;
+          }
+
+          data.parties = (rows || []).map(row => {
+            const seats2023 = row.seats_2023 ?? 0;
+            const seats2025 = row.seats_2025 ?? 0;
+            const vote2025  = row.vote_pct_2025;
+
+            return {
+              id: row.party_id,
+              name: row.party_name,
+              color: getPartyColor(row.party_id, row.party_name),
+              seats2023,
+              seats2025,
+              vote2025: typeof vote2025 === 'number' ? vote2025 : null,
+              diffSeats: seats2025 - seats2023
+            };
+          });
+
+          // Ordenar por escaños 2025 (desc)
+          data.parties.sort((a, b) => b.seats2025 - a.seats2025);
+
+          renderTable();
+          renderPartyList(previouslySelected);
+          updateTotals();
+        } catch (err) {
+          console.error('Error de red con Supabase:', err);
+        }
       }
 
       // ===== RENDER TABLA IZQUIERDA =====
@@ -392,20 +422,22 @@
       }
 
       // ===== RENDER LISTA DE PARTIDOS (CHECKBOXES) =====
-      function renderPartyList() {
+      function renderPartyList(preselectedIds = []) {
         partyListEl.innerHTML = '';
 
         // Solo partidos con al menos 1 escaño en 2025
         const selectableParties = data.parties.filter(p => p.seats2025 >= 1);
 
         selectableParties.forEach(p => {
+          const isChecked = preselectedIds.includes(p.id);
           const item = document.createElement('div');
           item.className = 'party-item';
           item.innerHTML = `
             <div class="party-item-left">
               <input type="checkbox"
                      class="party-checkbox"
-                     data-party-id="${p.id}">
+                     data-party-id="${p.id}"
+                     ${isChecked ? 'checked' : ''}>
               <span style="width:10px;height:10px;border-radius:2px;background:${p.color};display:inline-block;"></span>
               <span>${p.name}</span>
             </div>
@@ -526,6 +558,10 @@
       renderTable();
       renderPartyList();
       updateTotals();
+
+      // Carga inicial desde Supabase y refresco cada 30 segundos
+      loadDataFromSupabase(false);
+      setInterval(loadDataFromSupabase, 30000);
 
       window.addEventListener('load', sendHeightToParent);
       window.addEventListener('resize', () => {
