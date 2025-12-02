@@ -301,7 +301,7 @@
             name: 'PSOE',
             color: '#e31837',
             seats2023: 28,
-            seats2025: 28,
+            seats2025: 30,
             vote2025: null
           },
           {
@@ -317,7 +317,7 @@
             name: 'Unidas Podemos',
             color: '#8c2c8d',
             seats2023: 4,
-            seats2025: 4, 
+            seats2025: 0, // 0 escaños -> no se mostrará
             vote2025: null
           }
         ]
@@ -364,7 +364,11 @@
       // ===== RENDER TABLA IZQUIERDA =====
       function renderTable() {
         partyTableBodyEl.innerHTML = '';
-        data.parties.forEach(p => {
+
+        // Solo partidos con al menos 1 escaño en 2025
+        const partiesWithSeats = data.parties.filter(p => p.seats2025 >= 1);
+
+        partiesWithSeats.forEach(p => {
           const row = document.createElement('tr');
           const diff =
             p.diffSeats > 0
@@ -532,6 +536,4 @@
   </script>
 </body>
 </html>
-
-
 
