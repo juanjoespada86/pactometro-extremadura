@@ -358,6 +358,8 @@
         totalSeats: 65,
         parties: [] // se rellenará desde Supabase
       };
+      // Firma de los datos para detectar cambios
+      let lastDataSignature = null;
 
       // ===== REFERENCIAS DOM =====
       const totalSeatsMaxEl      = document.getElementById('total-seats-max');
@@ -437,7 +439,7 @@
         try {
           const { data: rows, error } = await supabase
             .from('pactometro_results')
-            .select('party_id, party_name, seats_2023, seats_2025, vote_pct_2025, updated_at')
+            .select('party_id, party_name, seats_2023, seats_2025, vote_pct_2025')
             .order('seats_2025', { ascending: false });
 
           if (error) {
@@ -445,7 +447,7 @@
             return;
           }
 
-          data.parties = (rows || []).map(row => {
+          const parties = (rows || []).map(row => {
             const seats2023 = row.seats_2023 ?? 0;
             const seats2025 = row.seats_2025 ?? 0;
             const vote2025  = row.vote_pct_2025;
@@ -457,29 +459,36 @@
               seats2023,
               seats2025,
               vote2025: typeof vote2025 === 'number' ? vote2025 : null,
-              diffSeats: seats2025 - seats2023,
-              updatedAt: row.updated_at || null
+              diffSeats: seats2025 - seats2023
             };
           });
 
           // Ordenar por escaños 2025 (desc)
-          data.parties.sort((a, b) => b.seats2025 - a.seats2025);
+          parties.sort((a, b) => b.seats2025 - a.seats2025);
 
-          // Actualizar indicador de última actualización (máximo updatedAt)
-          let lastUpdated = null;
-          data.parties.forEach(p => {
-            if (p.updatedAt) {
-              const d = new Date(p.updatedAt);
-              if (!lastUpdated || d > lastUpdated) {
-                lastUpdated = d;
-              }
-            }
-          });
-          updateLastUpdateLabel(lastUpdated);
+          // Crear firma nueva de los datos relevantes
+          const newSignature = JSON.stringify(
+            parties.map(p => ({
+              id: p.id,
+              seats2023: p.seats2023,
+              seats2025: p.seats2025,
+              vote2025: p.vote2025
+            }))
+          );
 
+          const hasChanged = newSignature !== lastDataSignature;
+          lastDataSignature = newSignature;
+
+          data.parties = parties;
+
+          // Renderizamos siempre, pero solo cambiamos la hora si hay cambios
           renderTable();
           renderPartyList(previouslySelected);
           updateTotals();
+
+          if (hasChanged) {
+            updateLastUpdateLabel(new Date());
+          }
         } catch (err) {
           console.error('Error de red con Supabase:', err);
         }
@@ -684,6 +693,7 @@
   </script>
 </body>
 </html>
+
 
 
 
