@@ -2,8 +2,14 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Pactómetro Asamblea de Extremadura 2025</title>
+  <title>Calculadora de pactos 21D</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Public Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <style>
     :root {
       --bg: #ffffff;
@@ -19,7 +25,7 @@
     }
 
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: "Public Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: var(--bg);
       color: var(--primary-text);
     }
@@ -187,16 +193,26 @@
 
     .reset-btn {
       margin-bottom: 8px;
-      font-size: 12px;
-      padding: 4px 10px;
-      border-radius: 4px;
-      border: 1px solid var(--border);
-      background: #f8f8f8;
+      font-size: 13px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: none;
+      background: #000000;
+      color: #ffffff;
       cursor: pointer;
+      font-family: "Public Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .reset-btn:hover {
-      background: #eeeeee;
+      background: #222222;
+    }
+
+    .reset-btn:active {
+      transform: translateY(1px);
     }
 
     @media (max-width: 600px) {
@@ -212,7 +228,7 @@
 </head>
 <body>
   <div class="pactometro-widget" data-total-seats="65">
-    <div class="pacto-header">Pactómetro Asamblea de Extremadura 2025</div>
+    <div class="pacto-header">Calculadora de pactos 21D</div>
 
     <div class="pacto-layout">
       <!-- IZQUIERDA: TABLA -->
@@ -301,7 +317,7 @@
             name: 'Unidas Podemos',
             color: '#8c2c8d',
             seats2023: 4,
-            seats2025: 4,
+            seats2025: 0, // ejemplo: sin representación en 2025
             vote2025: null
           }
         ]
@@ -374,7 +390,11 @@
       // ===== RENDER LISTA DE PARTIDOS (CHECKBOXES) =====
       function renderPartyList() {
         partyListEl.innerHTML = '';
-        data.parties.forEach(p => {
+
+        // Solo partidos con al menos 1 escaño en 2025
+        const selectableParties = data.parties.filter(p => p.seats2025 >= 1);
+
+        selectableParties.forEach(p => {
           const item = document.createElement('div');
           item.className = 'party-item';
           item.innerHTML = `
@@ -471,6 +491,9 @@
           pactoSummaryEl.textContent =
             '❌ No hay mayoría (' + total + ' escaños). Faltan ' + diff + ' escaños.';
         }
+
+        // Recalcular altura para el iframe después de cambios
+        sendHeightToParent();
       }
 
       // ===== RESET =====
@@ -486,11 +509,27 @@
         resetBtnEl.addEventListener('click', resetSelection);
       }
 
+      // ===== COMUNICAR ALTURA AL PADRE (AUTO-RESIZE IFRAME) =====
+      function sendHeightToParent() {
+        const height = document.documentElement.scrollHeight;
+        window.parent.postMessage(
+          { type: 'pactometro-resize', height },
+          '*'
+        );
+      }
+
       // ===== INICIO =====
       renderTable();
       renderPartyList();
       updateTotals();
+
+      window.addEventListener('load', sendHeightToParent);
+      window.addEventListener('resize', () => {
+        clearTimeout(window.__pactoResizeTimeout);
+        window.__pactoResizeTimeout = setTimeout(sendHeightToParent, 150);
+      });
     });
   </script>
 </body>
 </html>
+
