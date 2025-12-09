@@ -72,11 +72,6 @@
       color: #666666;
     }
 
-    .pacto-escrutinio-header {
-      font-size: 11px;
-      color: #666666;
-    }
-
     .pacto-layout {
       display: flex;
       gap: 16px;
@@ -221,7 +216,6 @@
       <div class="pacto-header-meta">
         <div class="pacto-last-update" id="hemiciclo-last-update"></div>
         <div class="pacto-majority-header" id="hemiciclo-majority-header"></div>
-        <div class="pacto-escrutinio-header" id="hemiciclo-escrutinio-header"></div>
       </div>
     </div>
 
@@ -400,36 +394,6 @@
           'Mayoría absoluta: ' + majority + ' escaños';
       }
 
-           // ===== Porcentaje de voto escrutado (si está disponible) =====
-      const escrutinioHeaderEl =
-        document.getElementById('hemiciclo-escrutinio-header');
-
-      let escrutinioPct = null;
-      if (Array.isArray(rows) && rows.length > 0) {
-        // Buscamos el primer registro que tenga pct_escrutado informado
-        let raw = null;
-        for (const r of rows) {
-          if (r.pct_escrutado != null) {
-            raw = r.pct_escrutado;
-            break;
-          }
-        }
-
-        if (raw != null) {
-          const num = Number(raw);
-          if (!Number.isNaN(num)) {
-            // Si viene como 0–1 lo pasamos a 0–100, si viene ya 0–100 lo dejamos
-            escrutinioPct = num > 1 ? num : num * 100;
-          }
-        }
-      }
-
-      if (escrutinioHeaderEl && escrutinioPct != null) {
-        escrutinioHeaderEl.textContent =
-          'Escrutado: ' + escrutinioPct.toFixed(1) + ' %';
-      }
-
-
       // ===== RENDER TABLA =====
       const tableBodyEl = document.getElementById('hemiciclo-table-body');
 
@@ -489,9 +453,9 @@
 
         return [
           'M', startOuter.x, startOuter.y,
-          'A', rOuter, rOuter, 0, largeArcFlag, 1, endOuter.x, endOuter.y,
+          'A', rOuter, rOuter, 0, largeArcFlag, 1, endOuter.x, endOuter.y,   // 👉 arco superior
           'L', startInner.x, startInner.y,
-          'A', rInner, rInner, 0, largeArcFlag, 0, endInner.x, endInner.y,
+          'A', rInner, rInner, 0, largeArcFlag, 0, endInner.x, endInner.y,   // 👉 arco interior hacia atrás
           'Z'
         ].join(' ');
       }
