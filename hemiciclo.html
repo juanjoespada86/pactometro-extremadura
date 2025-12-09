@@ -400,23 +400,25 @@
           'Mayoría absoluta: ' + majority + ' escaños';
       }
 
-      // ===== Porcentaje de voto escrutado (si está disponible) =====
+           // ===== Porcentaje de voto escrutado (si está disponible) =====
       const escrutinioHeaderEl =
         document.getElementById('hemiciclo-escrutinio-header');
 
       let escrutinioPct = null;
       if (Array.isArray(rows) && rows.length > 0) {
-        // Ajusta aquí el nombre del campo según lo tengas en Supabase
-        const raw =
-          rows[0].escrutinio_pct_2025 ??
-          rows[0].escrutinio_pct ??
-          rows[0].pct_escrutinio ??
-          null;
+        // Buscamos el primer registro que tenga pct_escrutado informado
+        let raw = null;
+        for (const r of rows) {
+          if (r.pct_escrutado != null) {
+            raw = r.pct_escrutado;
+            break;
+          }
+        }
 
         if (raw != null) {
           const num = Number(raw);
           if (!Number.isNaN(num)) {
-            // Si viene como 0–1 lo pasamos a 0–100
+            // Si viene como 0–1 lo pasamos a 0–100, si viene ya 0–100 lo dejamos
             escrutinioPct = num > 1 ? num : num * 100;
           }
         }
@@ -426,6 +428,7 @@
         escrutinioHeaderEl.textContent =
           'Escrutado: ' + escrutinioPct.toFixed(1) + ' %';
       }
+
 
       // ===== RENDER TABLA =====
       const tableBodyEl = document.getElementById('hemiciclo-table-body');
