@@ -72,6 +72,12 @@
       color: #666666;
     }
 
+    .pacto-scrutinio-header {
+      font-size: 11px;
+      color: #666666;
+    }
+
+
     .pacto-layout {
       display: flex;
       gap: 16px;
@@ -211,12 +217,15 @@
 </head>
 <body>
   <div class="pactometro-widget">
-    <div class="pacto-header-row">
-      <div class="pacto-header">Elecciones Asamblea Extremadura 21D</div>
-      <div class="pacto-header-meta">
-        <div class="pacto-last-update" id="hemiciclo-last-update"></div>
-        <div class="pacto-majority-header" id="hemiciclo-majority-header"></div>
-      </div>
+<div class="pacto-header-row">
+  <div class="pacto-header">Elecciones Asamblea Extremadura 21D</div>
+  <div class="pacto-header-meta">
+    <div class="pacto-last-update" id="hemiciclo-last-update"></div>
+    <div class="pacto-majority-header" id="hemiciclo-majority-header"></div>
+    <div class="pacto-scrutinio-header" id="hemiciclo-scrutinio-header"></div>
+  </div>
+</div>
+    
     </div>
 
     <div class="pacto-layout">
@@ -394,6 +403,39 @@
           'Mayoría absoluta: ' + majority + ' escaños';
       }
 
+          // ===== PORCENTAJE DE VOTO ESCRUTADO =====
+      let pctEscrutado = null;
+
+      if (Array.isArray(rows) && rows.length > 0) {
+        const values = rows
+          .map(r => r.pct_escrutado)
+          .filter(v => v !== null && v !== undefined)
+          .map(Number)
+          .filter(v => !Number.isNaN(v));
+
+        if (values.length > 0) {
+          // Suponemos que todas las filas tienen el mismo valor.
+          // Usamos el máximo por seguridad.
+          let raw = Math.max(...values);
+
+          // Heurística: si viene en [0,1], lo pasamos a porcentaje
+          if (raw <= 1) {
+            raw = raw * 100;
+          }
+
+          pctEscrutado = raw;
+        }
+      }
+
+      const escrutinioHeaderEl =
+        document.getElementById('hemiciclo-scrutinio-header');
+
+      if (escrutinioHeaderEl && pctEscrutado !== null) {
+        escrutinioHeaderEl.textContent =
+          'Voto escrutado: ' + pctEscrutado.toFixed(1) + ' %';
+      }
+
+      
       // ===== RENDER TABLA =====
       const tableBodyEl = document.getElementById('hemiciclo-table-body');
 
