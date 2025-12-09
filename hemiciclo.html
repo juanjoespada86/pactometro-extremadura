@@ -72,7 +72,7 @@
       color: #666666;
     }
 
-    .pacto-scrutinio-header {
+    .pacto-scrutado-header {
       font-size: 11px;
       color: #666666;
     }
@@ -114,14 +114,16 @@
       background: #fafafa;
     }
 
-    .party-label {
+    /* Celda de partido coloreada a todo ancho */
+    .party-cell {
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .party-cell-inner {
       display: flex;
       align-items: center;
-      width: 100%;
-      font-weight: 600;
-      color: #fff;
       padding: 2px 4px;
-      border-radius: 2px;
     }
 
     .diff-positive {
@@ -138,11 +140,20 @@
       color: #555;
     }
 
-    /* HEMICICLO */
-
-    .hemiciclo-wrapper {
-      width: 100%;
+    /* Contenedor de visualizaciones derechas (hemiciclo + mapa) */
+    .visualizations {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
     }
+
+    .hemiciclo-wrapper,
+    .mapa-wrapper {
+      flex: 1 1 260px;
+      min-width: 260px;
+    }
+
+    /* HEMICICLO */
 
     .hemiciclo-header-row {
       display: flex;
@@ -204,6 +215,96 @@
       border-radius: 2px;
     }
 
+    /* MAPA EXTREMADURA (provincias) */
+
+    .mapa-header-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+      font-size: 13px;
+    }
+
+    .mapa-title {
+      font-weight: 500;
+    }
+
+    .mapa-chart-container {
+      position: relative;
+      width: 100%;
+    }
+
+    .mapa-svg {
+      width: 100%;
+      max-height: 190px;
+      display: block;
+    }
+
+    .mapa-province-shape {
+      fill: #f2f2f2;
+      stroke: #cccccc;
+      stroke-width: 1;
+      cursor: pointer;
+      transition: transform 0.12s ease-out;
+    }
+
+    .mapa-province-shape:hover {
+      transform: scale(1.02);
+    }
+
+    .mapa-province-label {
+      font-size: 11px;
+      fill: #ffffff;
+      text-anchor: middle;
+      pointer-events: none;
+      paint-order: stroke;
+      stroke: rgba(0,0,0,0.4);
+      stroke-width: 0.8;
+    }
+
+    .mapa-tooltip {
+      position: absolute;
+      padding: 6px 8px;
+      background: rgba(0, 0, 0, 0.9);
+      color: #ffffff;
+      font-size: 11px;
+      border-radius: 3px;
+      pointer-events: none;
+      white-space: normal;
+      max-width: 260px;
+      transform: translate(-50%, -120%);
+      display: none;
+      z-index: 3;
+    }
+
+    .mapa-tooltip strong {
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .mapa-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 10px;
+      margin-top: 8px;
+      font-size: 12px;
+      justify-content: center;
+    }
+
+    .mapa-legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .mapa-legend-color {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+
     @media (max-width: 600px) {
       .pactometro-widget {
         padding: 8px;
@@ -222,7 +323,7 @@
       <div class="pacto-header-meta">
         <div class="pacto-last-update" id="hemiciclo-last-update"></div>
         <div class="pacto-majority-header" id="hemiciclo-majority-header"></div>
-        <div class="pacto-scrutinio-header" id="hemiciclo-scrutinio-header"></div>
+        <div class="pacto-scrutado-header" id="hemiciclo-scrutado-header"></div>
       </div>
     </div>
 
@@ -242,24 +343,76 @@
         </table>
       </div>
 
-      <!-- DERECHA: HEMICICLO SÓLIDO -->
+      <!-- DERECHA: HEMICICLO + MAPA -->
       <div class="pacto-right">
-        <div class="hemiciclo-wrapper">
-          <div class="hemiciclo-header-row">
-            <span class="hemiciclo-title">65 escaños</span>
+        <div class="visualizations">
+          <!-- HEMICICLO -->
+          <div class="hemiciclo-wrapper">
+            <div class="hemiciclo-header-row">
+              <span class="hemiciclo-title">65 escaños</span>
+            </div>
+
+            <div class="hemiciclo-chart-container" id="hemiciclo-chart-container">
+              <svg
+                id="hemiciclo-svg"
+                class="hemiciclo-svg"
+                viewBox="0 0 240 140"
+                xmlns="http://www.w3.org/2000/svg"
+              ></svg>
+              <div class="hemiciclo-tooltip" id="hemiciclo-tooltip"></div>
+            </div>
+
+            <div class="hemiciclo-legend" id="hemiciclo-legend"></div>
           </div>
 
-          <div class="hemiciclo-chart-container" id="hemiciclo-chart-container">
-            <svg
-              id="hemiciclo-svg"
-              class="hemiciclo-svg"
-              viewBox="0 0 240 140"
-              xmlns="http://www.w3.org/2000/svg"
-            ></svg>
-            <div class="hemiciclo-tooltip" id="hemiciclo-tooltip"></div>
-          </div>
+          <!-- MAPA EXTREMADURA -->
+          <div class="mapa-wrapper">
+            <div class="mapa-header-row">
+              <span class="mapa-title">Mapa por provincias</span>
+            </div>
 
-          <div class="hemiciclo-legend" id="hemiciclo-legend"></div>
+            <div class="mapa-chart-container" id="mapa-chart-container">
+              <svg
+                id="mapa-svg"
+                class="mapa-svg"
+                viewBox="0 0 240 160"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <!-- Cáceres (izquierda) -->
+                <g id="prov-caceres">
+                  <path
+                    class="mapa-province-shape"
+                    d="M 30 25 L 115 20 L 105 140 L 30 135 Z"
+                  ></path>
+                  <text
+                    x="70"
+                    y="90"
+                    class="mapa-province-label"
+                  >
+                    Cáceres
+                  </text>
+                </g>
+
+                <!-- Badajoz (derecha) -->
+                <g id="prov-badajoz">
+                  <path
+                    class="mapa-province-shape"
+                    d="M 115 20 L 210 25 L 210 135 L 105 140 Z"
+                  ></path>
+                  <text
+                    x="165"
+                    y="95"
+                    class="mapa-province-label"
+                  >
+                    Badajoz
+                  </text>
+                </g>
+              </svg>
+              <div class="mapa-tooltip" id="mapa-tooltip"></div>
+            </div>
+
+            <div class="mapa-legend" id="mapa-legend"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -287,7 +440,7 @@
 
           if (!res.ok) {
             console.error(
-              'Error al cargar datos de Supabase',
+              'Error al cargar datos de Supabase (pactometro_results)',
               await res.text()
             );
             return [];
@@ -295,12 +448,44 @@
 
           return await res.json();
         } catch (err) {
-          console.error('Error de red cargando Supabase', err);
+          console.error('Error de red cargando Supabase (pactometro_results)', err);
           return [];
         }
       }
 
-      const rows = await loadRowsFromSupabase();
+      // Resultados provinciales
+      async function loadProvincialRowsFromSupabase() {
+        try {
+          const res = await fetch(
+            SUPABASE_URL +
+              '/rest/v1/pactometro_provincial_results?select=*',
+            {
+              headers: {
+                apikey: SUPABASE_ANON_KEY,
+                Authorization: 'Bearer ' + SUPABASE_ANON_KEY
+              }
+            }
+          );
+
+          if (!res.ok) {
+            console.error(
+              'Error al cargar datos de Supabase (pactometro_provincial_results)',
+              await res.text()
+            );
+            return [];
+          }
+
+          return await res.json();
+        } catch (err) {
+          console.error('Error de red cargando Supabase (provinciales)', err);
+          return [];
+        }
+      }
+
+      const [rows, provincialRows] = await Promise.all([
+        loadRowsFromSupabase(),
+        loadProvincialRowsFromSupabase()
+      ]);
 
       // ===== "Última actualización" en cabecera =====
       const lastUpdateEl = document.getElementById('hemiciclo-last-update');
@@ -376,8 +561,7 @@
             seats2023,
             seats2025,
             diffSeats,
-            vote2025,
-            pct_escrutado: row.pct_escrutado
+            vote2025
           };
         });
 
@@ -393,6 +577,7 @@
         totalSeats = 65;
       }
 
+      // Mayoría absoluta
       const majority = Math.floor(totalSeats / 2) + 1;
       const majorityHeaderEl =
         document.getElementById('hemiciclo-majority-header');
@@ -401,34 +586,22 @@
           'Mayoría absoluta: ' + majority + ' escaños';
       }
 
-      // ===== PORCENTAJE DE VOTO ESCRUTADO =====
-      let pctEscrutado = null;
+      // % ESCRUTADO (usando pct_escrutado en pactometro_results)
+      const scrutadoHeaderEl =
+        document.getElementById('hemiciclo-scrutado-header');
+      if (scrutadoHeaderEl && Array.isArray(rows) && rows.length > 0) {
+        const pctValues = rows
+          .map((r) => r.pct_escrutado)
+          .filter((v) => v !== null && v !== undefined);
 
-      if (Array.isArray(rows) && rows.length > 0) {
-        const values = rows
-          .map(r => r.pct_escrutado)
-          .filter(v => v !== null && v !== undefined)
-          .map(Number)
-          .filter(v => !Number.isNaN(v));
-
-        if (values.length > 0) {
-          let raw = Math.max(...values); // asumimos mismo valor para todas
-
-          // Si viene entre 0 y 1, lo convertimos a porcentaje
-          if (raw > 0 && raw <= 1) {
-            raw = raw * 100;
+        if (pctValues.length > 0) {
+          let maxPct = Math.max(...pctValues);
+          if (maxPct <= 1) {
+            maxPct = maxPct * 100;
           }
-
-          pctEscrutado = raw;
+          scrutadoHeaderEl.textContent =
+            'Voto escrutado: ' + maxPct.toFixed(1).replace('.', ',') + ' %';
         }
-      }
-
-      const escrutinioHeaderEl =
-        document.getElementById('hemiciclo-scrutinio-header');
-
-      if (escrutinioHeaderEl && pctEscrutado !== null) {
-        escrutinioHeaderEl.textContent =
-          'Voto escrutado: ' + pctEscrutado.toFixed(1) + ' %';
       }
 
       // ===== RENDER TABLA =====
@@ -453,14 +626,14 @@
 
           const voteText =
             typeof p.vote2025 === 'number'
-              ? p.vote2025.toFixed(1) + ' %'
+              ? p.vote2025.toFixed(1).replace('.', ',') + ' %'
               : '–';
 
           row.innerHTML = `
-            <td>
-              <span class="party-label" style="background:${p.color}">
+            <td class="party-cell" style="background:${p.color}">
+              <div class="party-cell-inner">
                 ${p.name}
-              </span>
+              </div>
             </td>
             <td>${voteText}</td>
             <td>${p.seats2025}</td>
@@ -479,37 +652,41 @@
         };
       }
 
-      // En lugar de usar arcos SVG (comando A), generamos un polígono
-      // que aproxima el segmento de anillo. Esto evita problemas de flags
-      // y asegura un semicírculo perfecto visualmente.
+      // Genera un segmento de anillo como polígono, para evitar problemas con arcos SVG
       function createRingSegmentPath(cx, cy, rOuter, rInner, startAngle, endAngle) {
-        const angleDiff = Math.abs(startAngle - endAngle);
-        const steps = Math.max(8, Math.round(angleDiff / (Math.PI / 32))); // más pasos -> más suave
+        const steps = 24; // suavidad del borde curvo
 
-        const pathParts = [];
+        const outerPoints = [];
+        const innerPoints = [];
 
         // Borde exterior: de startAngle -> endAngle
         for (let i = 0; i <= steps; i++) {
           const t = i / steps;
           const angle = startAngle + (endAngle - startAngle) * t;
-          const { x, y } = polarToCartesian(cx, cy, rOuter, angle);
-          if (i === 0) {
-            pathParts.push('M ' + x + ' ' + y);
-          } else {
-            pathParts.push('L ' + x + ' ' + y);
+          outerPoints.push(polarToCartesian(cx, cy, rOuter, angle));
+        }
+
+        // Borde interior: de endAngle -> startAngle (para cerrar el anillo)
+        for (let i = steps; i >= 0; i--) {
+          const t = i / steps;
+          const angle = startAngle + (endAngle - startAngle) * t;
+          innerPoints.push(polarToCartesian(cx, cy, rInner, angle));
+        }
+
+        let d = '';
+        if (outerPoints.length) {
+          d += `M ${outerPoints[0].x} ${outerPoints[0].y}`;
+          for (let i = 1; i < outerPoints.length; i++) {
+            d += ` L ${outerPoints[i].x} ${outerPoints[i].y}`;
           }
         }
 
-        // Borde interior: de endAngle -> startAngle (al revés)
-        for (let i = 0; i <= steps; i++) {
-          const t = i / steps;
-          const angle = endAngle + (startAngle - endAngle) * t;
-          const { x, y } = polarToCartesian(cx, cy, rInner, angle);
-          pathParts.push('L ' + x + ' ' + y);
-        }
+        innerPoints.forEach((pt) => {
+          d += ` L ${pt.x} ${pt.y}`;
+        });
 
-        pathParts.push('Z');
-        return pathParts.join(' ');
+        d += ' Z';
+        return d;
       }
 
       // ===== RENDER HEMICICLO SÓLIDO =====
@@ -520,7 +697,7 @@
         'hemiciclo-chart-container'
       );
 
-      function showTooltip(evt, party) {
+      function showHemicicloTooltip(evt, party) {
         if (!tooltipEl || !chartContainerEl) return;
         const rect = chartContainerEl.getBoundingClientRect();
         const x = evt.clientX - rect.left;
@@ -528,7 +705,7 @@
 
         const voteText =
           typeof party.vote2025 === 'number'
-            ? party.vote2025.toFixed(1) + '%'
+            ? party.vote2025.toFixed(1).replace('.', ',') + '%'
             : 'sin dato';
 
         tooltipEl.style.left = x + 'px';
@@ -537,7 +714,7 @@
         tooltipEl.style.display = 'block';
       }
 
-      function hideTooltip() {
+      function hideHemicicloTooltip() {
         if (!tooltipEl) return;
         tooltipEl.style.display = 'none';
       }
@@ -589,10 +766,10 @@
           path.style.cursor = 'pointer';
 
           // Interacción: hover + click
-          path.addEventListener('mousemove', (evt) => showTooltip(evt, p));
-          path.addEventListener('mouseenter', (evt) => showTooltip(evt, p));
-          path.addEventListener('mouseleave', hideTooltip);
-          path.addEventListener('click', (evt) => showTooltip(evt, p));
+          path.addEventListener('mousemove', (evt) => showHemicicloTooltip(evt, p));
+          path.addEventListener('mouseenter', (evt) => showHemicicloTooltip(evt, p));
+          path.addEventListener('mouseleave', hideHemicicloTooltip);
+          path.addEventListener('click', (evt) => showHemicicloTooltip(evt, p));
 
           svgEl.appendChild(path);
         });
@@ -612,6 +789,134 @@
         }
       }
 
+      // ===== MAPA EXTREMADURA (provincias) =====
+      const mapaSvgEl = document.getElementById('mapa-svg');
+      const mapaTooltipEl = document.getElementById('mapa-tooltip');
+      const mapaContainerEl = document.getElementById('mapa-chart-container');
+      const mapaLegendEl = document.getElementById('mapa-legend');
+
+      function showMapaTooltip(evt, provinciaInfo) {
+        if (!mapaTooltipEl || !mapaContainerEl) return;
+        const rect = mapaContainerEl.getBoundingClientRect();
+        const x = evt.clientX - rect.left;
+        const y = evt.clientY - rect.top;
+
+        // Construimos HTML con todos los partidos en la provincia
+        let html = `<strong>${provinciaInfo.nombre}</strong>`;
+        provinciaInfo.resultados.forEach((r) => {
+          const voteText =
+            r.vote_pct_2025 != null
+              ? r.vote_pct_2025.toFixed(1).replace('.', ',') + '%'
+              : '–';
+          html += `<br>${r.party_name} · ${r.seats_2025} escaños · ${voteText} voto`;
+        });
+
+        mapaTooltipEl.style.left = x + 'px';
+        mapaTooltipEl.style.top = y + 'px';
+        mapaTooltipEl.innerHTML = html;
+        mapaTooltipEl.style.display = 'block';
+      }
+
+      function hideMapaTooltip() {
+        if (!mapaTooltipEl) return;
+        mapaTooltipEl.style.display = 'none';
+      }
+
+      function renderMapaProvincias() {
+        if (!mapaSvgEl) return;
+
+        // Agrupamos resultados por provincia
+        const provByName = {};
+        (provincialRows || []).forEach((row) => {
+          const prov = row.provincia;
+          if (!prov) return;
+          if (!provByName[prov]) {
+            provByName[prov] = [];
+          }
+          provByName[prov].push(row);
+        });
+
+        const provinciasConfig = [
+          { nombre: 'Cáceres', id: 'prov-caceres' },
+          { nombre: 'Badajoz', id: 'prov-badajoz' }
+        ];
+
+        const legendParties = new Map();
+
+        provinciasConfig.forEach((provConfig) => {
+          const { nombre, id } = provConfig;
+          const gEl = document.getElementById(id);
+          if (!gEl) return;
+
+          const shapeEl = gEl.querySelector('.mapa-province-shape');
+          if (!shapeEl) return;
+
+          const rowsProv = (provByName[nombre] || []).filter(
+            (r) => (r.seats_2025 || 0) > 0
+          );
+
+          if (rowsProv.length === 0) {
+            // Sin datos: la provincia se queda en gris clarito
+            shapeEl.style.fill = '#f2f2f2';
+            return;
+          }
+
+          // Ordenamos por escaños 2025 desc para encontrar ganador
+          rowsProv.sort((a, b) => (b.seats_2025 || 0) - (a.seats_2025 || 0));
+          const ganador = rowsProv[0];
+
+          const colorGanador = COLOR_MAP[ganador.party_id] || '#888888';
+          shapeEl.style.fill = colorGanador;
+
+          // Normalizamos vote_pct_2025 a número
+          rowsProv.forEach((r) => {
+            if (r.vote_pct_2025 != null) {
+              r.vote_pct_2025 = Number(r.vote_pct_2025);
+            }
+          });
+
+          const provinciaInfo = {
+            nombre,
+            ganador,
+            color: colorGanador,
+            resultados: rowsProv
+          };
+
+          // Guardamos en la leyenda combinada por partido ganador
+          legendParties.set(ganador.party_id, {
+            id: ganador.party_id,
+            name: ganador.party_name,
+            color: colorGanador
+          });
+
+          // Eventos de interacción
+          gEl.addEventListener('mousemove', (evt) =>
+            showMapaTooltip(evt, provinciaInfo)
+          );
+          gEl.addEventListener('mouseenter', (evt) =>
+            showMapaTooltip(evt, provinciaInfo)
+          );
+          gEl.addEventListener('mouseleave', hideMapaTooltip);
+          gEl.addEventListener('click', (evt) =>
+            showMapaTooltip(evt, provinciaInfo)
+          );
+        });
+
+        // Leyenda de mapa (partidos que ganan al menos una provincia)
+        if (mapaLegendEl) {
+          mapaLegendEl.innerHTML = '';
+          Array.from(legendParties.values()).forEach((p) => {
+            const item = document.createElement('div');
+            item.className = 'mapa-legend-item';
+            item.innerHTML = `
+              <span class="mapa-legend-color" style="background:${p.color}"></span>
+              <span>${p.name}</span>
+            `;
+            mapaLegendEl.appendChild(item);
+          });
+        }
+      }
+
       // ===== AUTO-RESIZE PARA IFRAME =====
       function sendHeightToParent() {
         const height = document.documentElement.scrollHeight;
@@ -624,6 +929,7 @@
       // ===== INICIO =====
       renderTable();
       renderHemicycle();
+      renderMapaProvincias();
       sendHeightToParent();
 
       window.addEventListener('load', sendHeightToParent);
@@ -635,10 +941,13 @@
         );
       });
 
-      // Ocultar tooltip si se hace clic fuera
+      // Ocultar tooltips si se hace clic fuera
       document.addEventListener('click', (evt) => {
-        if (!chartContainerEl.contains(evt.target)) {
-          hideTooltip();
+        if (chartContainerEl && !chartContainerEl.contains(evt.target)) {
+          hideHemicicloTooltip();
+        }
+        if (mapaContainerEl && !mapaContainerEl.contains(evt.target)) {
+          hideMapaTooltip();
         }
       });
     });
