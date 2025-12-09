@@ -72,6 +72,11 @@
       color: #666666;
     }
 
+    .pacto-escrutinio-header {
+      font-size: 11px;
+      color: #666666;
+    }
+
     .pacto-layout {
       display: flex;
       gap: 16px;
@@ -216,6 +221,7 @@
       <div class="pacto-header-meta">
         <div class="pacto-last-update" id="hemiciclo-last-update"></div>
         <div class="pacto-majority-header" id="hemiciclo-majority-header"></div>
+        <div class="pacto-escrutinio-header" id="hemiciclo-escrutinio-header"></div>
       </div>
     </div>
 
@@ -394,6 +400,33 @@
           'Mayoría absoluta: ' + majority + ' escaños';
       }
 
+      // ===== Porcentaje de voto escrutado (si está disponible) =====
+      const escrutinioHeaderEl =
+        document.getElementById('hemiciclo-escrutinio-header');
+
+      let escrutinioPct = null;
+      if (Array.isArray(rows) && rows.length > 0) {
+        // Ajusta aquí el nombre del campo según lo tengas en Supabase
+        const raw =
+          rows[0].escrutinio_pct_2025 ??
+          rows[0].escrutinio_pct ??
+          rows[0].pct_escrutinio ??
+          null;
+
+        if (raw != null) {
+          const num = Number(raw);
+          if (!Number.isNaN(num)) {
+            // Si viene como 0–1 lo pasamos a 0–100
+            escrutinioPct = num > 1 ? num : num * 100;
+          }
+        }
+      }
+
+      if (escrutinioHeaderEl && escrutinioPct != null) {
+        escrutinioHeaderEl.textContent =
+          'Escrutado: ' + escrutinioPct.toFixed(1) + ' %';
+      }
+
       // ===== RENDER TABLA =====
       const tableBodyEl = document.getElementById('hemiciclo-table-body');
 
@@ -453,9 +486,9 @@
 
         return [
           'M', startOuter.x, startOuter.y,
-          'A', rOuter, rOuter, 0, largeArcFlag, 1, endOuter.x, endOuter.y,   // 👉 arco superior
+          'A', rOuter, rOuter, 0, largeArcFlag, 1, endOuter.x, endOuter.y,
           'L', startInner.x, startInner.y,
-          'A', rInner, rInner, 0, largeArcFlag, 0, endInner.x, endInner.y,   // 👉 arco interior hacia atrás
+          'A', rInner, rInner, 0, largeArcFlag, 0, endInner.x, endInner.y,
           'Z'
         ].join(' ');
       }
