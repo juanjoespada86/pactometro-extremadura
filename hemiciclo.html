@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Hemiciclo 21D – Distribución de escaños</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Public Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #ffffff;
+      --primary-text: #222;
+      --muted: #f2f2f2;
+      --border: #dddddd;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Public Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--primary-text);
+    }
+
+    .pactometro-widget {
+      max-width: 1100px;
+      margin: 0 auto;
+      border: 1px solid var(--border);
+      padding: 12px;
+      background: #fff;
+      font-size: 14px;
+    }
+
+    .pacto-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pacto-header {
+      font-weight: 600;
+    }
+
+    .pacto-last-update {
+      font-size: 11px;
+      color: #666666;
+    }
+
+    .pacto-layout {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .pacto-left {
+      flex: 1 1 260px;
+      min-width: 260px;
+    }
+
+    .pacto-right {
+      flex: 2 1 320px;
+      min-width: 320px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th, td {
+      padding: 4px 6px;
+      text-align: left;
+    }
+
+    thead th {
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    tbody tr:nth-child(odd) {
+      background: #fafafa;
+    }
+
+    .party-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      color: #fff;
+      padding: 2px 4px;
+      border-radius: 2px;
+    }
+
+    .diff-positive {
+      color: #0b7a3b;
+      font-weight: 500;
+    }
+
+    .diff-negative {
+      color: #b3261e;
+      font-weight: 500;
+    }
+
+    .diff-zero {
+      color: #555;
+    }
+
+    /* HEMICICLO */
+
+    .hemiciclo-wrapper {
+      width: 100%;
+    }
+
+    .hemiciclo-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+      font-size: 13px;
+    }
+
+    .hemiciclo-title {
+      font-weight: 500;
+    }
+
+    .hemiciclo-majority {
+      font-size: 12px;
+      color: #555;
+    }
+
+    .hemiciclo-svg {
+      width: 100%;
+      max-height: 180px;
+      display: block;
+    }
+
+    .hemiciclo-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 10px;
+      margin-top: 8px;
+      font-size: 12px;
+    }
+
+    .hemiciclo-legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .hemiciclo-legend-color {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+
+    @media (max-width: 600px) {
+      .pactometro-widget {
+        padding: 8px;
+      }
+
+      table {
+        font-size: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="pactometro-widget">
+    <div class="pacto-header-row">
+      <div class="pacto-header">Distribución de escaños 21D</div>
+      <div class="pacto-last-update" id="hemiciclo-last-update"></div>
+    </div>
+
+    <div class="pacto-layout">
+      <!-- IZQUIERDA: TABLA ESCAÑOS -->
+      <div class="pacto-left">
+        <table>
+          <thead>
+            <tr>
+              <th>Partido</th>
+              <th>Escaños 2023</th>
+              <th>Escaños 2025</th>
+              <th>Dif.</th>
+            </tr>
+          </thead>
+          <tbody id="hemiciclo-table-body"></tbody>
+        </table>
+      </div>
+
+      <!-- DERECHA: HEMICICLO -->
+      <div class="pacto-right">
+        <div class="hemiciclo-wrapper">
+          <div class="hemiciclo-header-row">
+            <span class="hemiciclo-title">Hemiciclo (65 escaños)</span>
+            <span class="hemiciclo-majority" id="hemiciclo-majority-text">
+              Mayoría absoluta: 33 escaños
+            </span>
+          </div>
+
+          <svg
+            id="hemiciclo-svg"
+            class="hemiciclo-svg"
+            viewBox="0 0 240 140"
+            xmlns="http://www.w3.org/2000/svg"
+          ></svg>
+
+          <div class="hemiciclo-legend" id="hemiciclo-legend"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', async function () {
+      // ===== CONFIG SUPABASE =====
+      const SUPABASE_URL = 'https://xllvmudwstmeqvpcbzhs.supabase.co';
+      const SUPABASE_ANON_KEY =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhsbHZtdWR3c3RtZXF2cGNiemhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2Nzc2NjEsImV4cCI6MjA4MDI1MzY2MX0.cxLTnkEYd8Vj34ISZcQvs_CdRjNE3x4eLl7t9NY_13A';
+
+      async function loadRowsFromSupabase() {
+        try {
+          const res = await fetch(
+            SUPABASE_URL +
+              '/rest/v1/pactometro_results?select=*&order=seats_2025.desc',
+            {
+              headers: {
+                apikey: SUPABASE_ANON_KEY,
+                Authorization: 'Bearer ' + SUPABASE_ANON_KEY
+              }
+            }
+          );
+
+          if (!res.ok) {
+            console.error(
+              'Error al cargar datos de Supabase',
+              await res.text()
+            );
+            return [];
+          }
+
+          return await res.json();
+        } catch (err) {
+          console.error('Error de red cargando Supabase', err);
+          return [];
+        }
+      }
+
+      const rows = await loadRowsFromSupabase();
+
+      // ===== "Última actualización" =====
+      const lastUpdateEl = document.getElementById('hemiciclo-last-update');
+      if (lastUpdateEl && Array.isArray(rows) && rows.length > 0) {
+        const fechas = rows
+          .map((r) => r.updated_at)
+          .filter(Boolean)
+          .map((d) => new Date(d));
+
+        if (fechas.length > 0) {
+          const maxDate = new Date(Math.max(...fechas));
+          const texto = maxDate.toLocaleString('es-ES', {
+            timeZone: 'Europe/Madrid',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          lastUpdateEl.textContent = 'Última actualización: ' + texto;
+        }
+      }
+
+      // ===== MAPA DE COLORES FIJO POR PARTIDO =====
+      const COLOR_MAP = {
+        pp: '#1E4B8F',
+        psoe: '#E10025',
+        vox: '#7CBD2A',
+        podemosiuav: '#693269',        // Unidas por Extremadura
+        juntoslevanta: '#008036',
+        cs: '#FE5000',
+        mundojusto: '#F7C294',
+        pacma: '#05E94E',
+        nex: '#01C0A9',
+        uedsyt: '#128E54',
+        extremadura_unida: '#33B142'
+      };
+
+      // Orden ideológico (izquierda -> derecha) por party_id
+      const IDEOLOGICAL_ORDER = [
+        'podemosiuav',        // Unidas por Extremadura
+        'psoe',
+        'juntoslevanta',
+        'extremadura_unida',
+        'pacma',
+        'mundojusto',
+        'nex',
+        'uedsyt',
+        'cs',
+        'pp',
+        'vox'
+      ];
+
+      function ideologyIndex(id) {
+        const idx = IDEOLOGICAL_ORDER.indexOf(id);
+        return idx === -1 ? 999 : idx;
+      }
+
+      // ===== Construir estructura de datos =====
+      const parties = (rows || []).map((row) => {
+        const seats2023 = row.seats_2023 ?? 0;
+        const seats2025 = row.seats_2025 ?? 0;
+        const diffSeats = seats2025 - seats2023;
+
+        return {
+          id: row.party_id,
+          name: row.party_name,
+          color: COLOR_MAP[row.party_id] || '#888888',
+          seats2023,
+          seats2025,
+          diffSeats
+        };
+      });
+
+      // Ordenamos por escaños 2025 (desc) para la tabla
+      parties.sort((a, b) => b.seats2025 - a.seats2025);
+
+      // Total escaños (por si en algún momento no son 65)
+      let totalSeats = parties.reduce(
+        (sum, p) => sum + (p.seats2025 || 0),
+        0
+      );
+      if (!totalSeats) {
+        totalSeats = 65;
+      }
+
+      const majority = Math.floor(totalSeats / 2) + 1;
+      const majorityTextEl =
+        document.getElementById('hemiciclo-majority-text');
+      if (majorityTextEl) {
+        majorityTextEl.textContent =
+          'Mayoría absoluta: ' + majority + ' escaños';
+      }
+
+      // ===== RENDER TABLA ESCAÑOS =====
+      const tableBodyEl = document.getElementById('hemiciclo-table-body');
+
+      function renderTable() {
+        if (!tableBodyEl) return;
+        tableBodyEl.innerHTML = '';
+
+        parties.forEach((p) => {
+          const row = document.createElement('tr');
+
+          let diffText = '–';
+          let diffClass = 'diff-zero';
+          if (p.diffSeats > 0) {
+            diffText = '▲ ' + p.diffSeats;
+            diffClass = 'diff-positive';
+          } else if (p.diffSeats < 0) {
+            diffText = '▼ ' + Math.abs(p.diffSeats);
+            diffClass = 'diff-negative';
+          }
+
+          row.innerHTML = `
+            <td>
+              <span class="party-label" style="background:${p.color}">
+                ${p.name}
+              </span>
+            </td>
+            <td>${p.seats2023}</td>
+            <td>${p.seats2025}</td>
+            <td class="${diffClass}">${diffText}</td>
+          `;
+
+          tableBodyEl.appendChild(row);
+        });
+      }
+
+      // ===== RENDER HEMICICLO =====
+      const svgEl = document.getElementById('hemiciclo-svg');
+      const legendEl = document.getElementById('hemiciclo-legend');
+
+      function renderHemicycle() {
+        if (!svgEl) return;
+
+        // Limpiamos SVG
+        while (svgEl.firstChild) {
+          svgEl.removeChild(svgEl.firstChild);
+        }
+
+        // Partidos con representación en 2025, ordenados izquierda -> derecha
+        const partiesWithSeats = parties
+          .filter((p) => p.seats2025 > 0)
+          .sort((a, b) => ideologyIndex(a.id) - ideologyIndex(b.id));
+
+        // Asignamos un asiento por escaño, en orden ideológico
+        const seatAssignments = [];
+        partiesWithSeats.forEach((p) => {
+          for (let i = 0; i < p.seats2025; i++) {
+            seatAssignments.push({
+              id: p.id,
+              name: p.name,
+              color: p.color
+            });
+          }
+        });
+
+        // Si por algún motivo faltan asientos, rellenamos con "vacíos"
+        while (seatAssignments.length < totalSeats) {
+          seatAssignments.push({
+            id: 'empty',
+            name: '',
+            color: '#e0e0e0'
+          });
+        }
+
+        const cx = 120;   // centro en X
+        const cy = 120;   // centro en Y (debajo del borde inferior)
+        const radius = 100;
+        const seatRadius = 4;
+
+        const seatCount = seatAssignments.length;
+        const maxIndex = totalSeats - 1;
+
+        for (let i = 0; i < seatCount; i++) {
+          const seat = seatAssignments[i];
+
+          // Ángulo de π (izquierda) a 0 (derecha)
+          const angle = Math.PI - (Math.PI * i / maxIndex);
+          const x = cx + radius * Math.cos(angle);
+          const y = cy - radius * Math.sin(angle); // arriba
+
+          const circle = document.createElementNS(
+            'http://www.w3.org/2000/svg',
+            'circle'
+          );
+          circle.setAttribute('cx', x.toFixed(2));
+          circle.setAttribute('cy', y.toFixed(2));
+          circle.setAttribute('r', seatRadius);
+          circle.setAttribute('fill', seat.color);
+          circle.setAttribute('data-party-id', seat.id);
+
+          svgEl.appendChild(circle);
+        }
+
+        // Leyenda: solo partidos con escaños
+        if (legendEl) {
+          legendEl.innerHTML = '';
+          partiesWithSeats.forEach((p) => {
+            const item = document.createElement('div');
+            item.className = 'hemiciclo-legend-item';
+            item.innerHTML = `
+              <span class="hemiciclo-legend-color" style="background:${p.color}"></span>
+              <span>${p.name} (${p.seats2025})</span>
+            `;
+            legendEl.appendChild(item);
+          });
+        }
+      }
+
+      // ===== COMUNICAR ALTURA AL PADRE (AUTO-RESIZE IFRAME) =====
+      function sendHeightToParent() {
+        const height = document.documentElement.scrollHeight;
+        window.parent.postMessage(
+          { type: 'pactometro-resize', height },
+          '*'
+        );
+      }
+
+      // ===== INICIO =====
+      renderTable();
+      renderHemicycle();
+      sendHeightToParent();
+
+      window.addEventListener('load', sendHeightToParent);
+      window.addEventListener('resize', () => {
+        clearTimeout(window.__hemicicloResizeTimeout);
+        window.__hemicicloResizeTimeout = setTimeout(
+          sendHeightToParent,
+          150
+        );
+      });
+    });
+  </script>
+</body>
+</html>
