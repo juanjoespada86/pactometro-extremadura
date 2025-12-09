@@ -8,7 +8,10 @@
   <!-- Public Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  >
 
   <style>
     :root {
@@ -45,7 +48,7 @@
       justify-content: space-between;
       align-items: baseline;
       gap: 8px;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
       flex-wrap: wrap;
     }
 
@@ -62,6 +65,7 @@
       display: flex;
       gap: 16px;
       flex-wrap: wrap;
+      margin-top: 8px;
     }
 
     .pacto-left {
@@ -205,14 +209,15 @@
       margin-right: 4px;
     }
 
-    .buttons-row {
+    .pacto-buttons-row {
       display: flex;
-      gap: 8px;
       flex-wrap: wrap;
+      gap: 8px;
       margin-bottom: 8px;
     }
 
-    .btn-base {
+    .reset-btn,
+    .refresh-btn {
       font-size: 13px;
       padding: 6px 14px;
       border-radius: 999px;
@@ -238,17 +243,16 @@
       transform: translateY(1px);
     }
 
-    .reload-btn {
-      background: #ffffff;
-      color: #000000;
-      border: 1px solid #000000;
+    .refresh-btn {
+      background: #e0e0e0;
+      color: #222222;
     }
 
-    .reload-btn:hover {
-      background: #f2f2f2;
+    .refresh-btn:hover {
+      background: #d0d0d0;
     }
 
-    .reload-btn:active {
+    .refresh-btn:active {
       transform: translateY(1px);
     }
 
@@ -269,8 +273,8 @@
       <div class="pacto-header">Calculadora de pactos 21D</div>
       <div class="pacto-last-update" id="pacto-last-update"></div>
     </div>
-<div class="pacto-last-update" id="pacto-escrutado"></div>
-    
+    <div class="pacto-last-update" id="pacto-escrutado"></div>
+
     <div class="pacto-layout">
       <!-- IZQUIERDA: TABLA -->
       <div class="pacto-left">
@@ -314,11 +318,11 @@
           Selecciona partidos para formar una mayoría.
         </div>
 
-        <div class="buttons-row">
-          <button type="button" class="btn-base reset-btn" id="reset-btn">
+        <div class="pacto-buttons-row">
+          <button type="button" class="reset-btn" id="reset-btn">
             Volver a empezar
           </button>
-          <button type="button" class="btn-base reload-btn" id="reload-btn">
+          <button type="button" class="refresh-btn" id="refresh-btn">
             Actualizar datos
           </button>
         </div>
@@ -333,54 +337,6 @@
       // ===== CONFIG SUPABASE =====
       const SUPABASE_URL = 'https://xllvmudwstmeqvpcbzhs.supabase.co';
       const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhsbHZtdWR3c3RtZXF2cGNiemhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2Nzc2NjEsImV4cCI6MjA4MDI1MzY2MX0.cxLTnkEYd8Vj34ISZcQvs_CdRjNE3x4eLl7t9NY_13A';
-
-      // Datos en memoria
-      const data = {
-        totalSeats: 65,
-        parties: []
-      };
-
-      // Colores por partido
-      const COLOR_MAP = {
-        pp: '#0070c0',
-        psoe: '#e31837',
-        vox: '#53a318',
-        podemosiuav: '#8c2c8d'
-      };
-
-      // ===== DOM REFS =====
-      const totalSeatsMaxEl      = document.getElementById('total-seats-max');
-      const totalSeatsSelectedEl = document.getElementById('total-seats-selected');
-      const majorityNumberEl     = document.getElementById('majority-number');
-      const majorityMarkerEl     = document.getElementById('majority-marker');
-      const majorityTextEl       = document.getElementById('majority-text');
-      const pactoSummaryEl       = document.getElementById('pacto-summary');
-      const partyTableBodyEl     = document.getElementById('party-table-body');
-      const partyListEl          = document.getElementById('pacto-parties-list');
-      const barSegmentsEl        = document.getElementById('bar-segments');
-      const barTooltipEl         = document.getElementById('bar-tooltip');
-      const resetBtnEl           = document.getElementById('reset-btn');
-      const reloadBtnEl          = document.getElementById('reload-btn');
-      const lastUpdateEl         = document.getElementById('pacto-last-update');
-
-      if (!partyTableBodyEl || !partyListEl) {
-        console.error('No se han encontrado los contenedores principales del pactómetro');
-        return;
-      }
-
-      const majority = Math.floor(data.totalSeats / 2) + 1; // 33 para 65
-
-      totalSeatsMaxEl.textContent  = data.totalSeats;
-      majorityNumberEl.textContent = majority;
-
-      const majorityPercent = (majority / data.totalSeats) * 100;
-      if (majorityMarkerEl && majorityTextEl) {
-        majorityMarkerEl.style.left = majorityPercent + '%';
-        majorityTextEl.style.left   = majorityPercent + '%';
-        majorityTextEl.textContent  = 'Mayoría: ' + majority;
-      }
-
-      // ===== FUNCIONES AUXILIARES =====
 
       async function loadRowsFromSupabase() {
         try {
@@ -406,43 +362,98 @@
         }
       }
 
-      function updateLastUpdateLabel(rows) {
-        if (!lastUpdateEl || !Array.isArray(rows) || rows.length === 0) return;
+      // ===== REFERENCIAS DOM GLOBALES =====
+      const widgetEl            = document.querySelector('.pactometro-widget');
+      const totalSeatsMaxEl     = document.getElementById('total-seats-max');
+      const totalSeatsSelectedEl= document.getElementById('total-seats-selected');
+      const majorityNumberEl    = document.getElementById('majority-number');
+      const majorityMarkerEl    = document.getElementById('majority-marker');
+      const majorityTextEl      = document.getElementById('majority-text');
+      const pactoSummaryEl      = document.getElementById('pacto-summary');
+      const partyTableBodyEl    = document.getElementById('party-table-body');
+      const partyListEl         = document.getElementById('pacto-parties-list');
+      const barSegmentsEl       = document.getElementById('bar-segments');
+      const barTooltipEl        = document.getElementById('bar-tooltip');
+      const resetBtnEl          = document.getElementById('reset-btn');
+      const refreshBtnEl        = document.getElementById('refresh-btn');
+      const lastUpdateEl        = document.getElementById('pacto-last-update');
+      const escrutadoEl         = document.getElementById('pacto-escrutado');
 
-        const fechas = rows
-          .map(r => r.updated_at)
-          .filter(Boolean)
-          .map(d => new Date(d));
-
-        if (fechas.length === 0) return;
-
-        const maxDate = new Date(Math.max(...fechas));
-        const texto = maxDate.toLocaleString('es-ES', {
-          timeZone: 'Europe/Madrid',
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-        lastUpdateEl.textContent = 'Última actualización: ' + texto;
+      if (!partyTableBodyEl || !partyListEl || !widgetEl) {
+        console.error('No se han encontrado los contenedores principales del pactómetro');
+        return;
       }
-// ===== "% escrutado" (a partir de pct_escrutado) =====
-const escrutadoEl = document.getElementById('pacto-escrutado');
-if (escrutadoEl && Array.isArray(rows) && rows.length > 0) {
-  const first = rows[0];
 
-  if (first.pct_escrutado != null) {
-    const pct = Number(first.pct_escrutado);
-    if (!Number.isNaN(pct)) {
-      escrutadoEl.textContent =
-        'Escrutado: ' + pct.toFixed(2).replace('.', ',') + ' %';
-    }
-  }
-}
+      const totalSeatsAttr = Number(widgetEl.dataset.totalSeats || 65);
+      const data = {
+        totalSeats: totalSeatsAttr,
+        parties: []
+      };
 
-      function buildDataFromRows(rows) {
-        data.parties = (rows || []).map(row => ({
+      const majority = Math.floor(data.totalSeats / 2) + 1;
+      totalSeatsMaxEl.textContent  = data.totalSeats;
+      majorityNumberEl.textContent = majority;
+
+      const majorityPercent = (majority / data.totalSeats) * 100;
+      if (majorityMarkerEl && majorityTextEl) {
+        majorityMarkerEl.style.left = majorityPercent + '%';
+        majorityTextEl.style.left   = majorityPercent + '%';
+        majorityTextEl.textContent  = 'Mayoría: ' + majority;
+      }
+
+      // ===== COLORES POR PARTIDO =====
+      const COLOR_MAP = {
+        pp: '#0070c0',
+        psoe: '#e31837',
+        vox: '#53a318',
+        podemosiuav: '#8c2c8d'
+      };
+
+      // ===== METADATOS: última actualización + % escrutado =====
+      function actualizarMetadatos(rows) {
+        if (!Array.isArray(rows) || rows.length === 0) {
+          if (lastUpdateEl) lastUpdateEl.textContent = '';
+          if (escrutadoEl) escrutadoEl.textContent = '';
+          return;
+        }
+
+        // Última actualización
+        if (lastUpdateEl) {
+          const fechas = rows
+            .map(r => r.updated_at)
+            .filter(Boolean)
+            .map(d => new Date(d));
+
+          if (fechas.length > 0) {
+            const maxDate = new Date(Math.max(...fechas));
+            const texto = maxDate.toLocaleString('es-ES', {
+              timeZone: 'Europe/Madrid',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+            lastUpdateEl.textContent = 'Última actualización: ' + texto;
+          }
+        }
+
+        // % escrutado
+        if (escrutadoEl) {
+          const first = rows[0];
+          if (first && first.pct_escrutado != null) {
+            const pct = Number(first.pct_escrutado);
+            if (!Number.isNaN(pct)) {
+              escrutadoEl.textContent =
+                'Escrutado: ' + pct.toFixed(2).replace('.', ',') + ' %';
+            }
+          }
+        }
+      }
+
+      // ===== CONSTRUIR data.parties A PARTIR DE ROWS =====
+      function construirPartidos(rows) {
+        const parties = (rows || []).map(row => ({
           id: row.party_id,
           name: row.party_name,
           color: COLOR_MAP[row.party_id] || '#888888',
@@ -451,13 +462,13 @@ if (escrutadoEl && Array.isArray(rows) && rows.length > 0) {
           vote2025: row.vote_pct_2025 != null ? Number(row.vote_pct_2025) : null
         }));
 
-        // Diferencia de escaños
-        data.parties.forEach(p => {
+        parties.forEach(p => {
           p.diffSeats = p.seats2025 - p.seats2023;
         });
 
-        // Ordenar por escaños 2025 (descendente)
-        data.parties.sort((a, b) => b.seats2025 - a.seats2025);
+        parties.sort((a, b) => b.seats2025 - a.seats2025);
+
+        data.parties = parties;
       }
 
       // ===== RENDER TABLA IZQUIERDA =====
@@ -490,7 +501,7 @@ if (escrutadoEl && Array.isArray(rows) && rows.length > 0) {
       }
 
       // ===== RENDER LISTA DE PARTIDOS (CHECKBOXES) =====
-      function renderPartyList(selectedIds = []) {
+      function renderPartyList() {
         partyListEl.innerHTML = '';
 
         const selectableParties = data.parties.filter(p => p.seats2025 >= 1);
@@ -510,14 +521,12 @@ if (escrutadoEl && Array.isArray(rows) && rows.length > 0) {
               <span>${p.seats2025} escaños</span>
             </div>
           `;
-
-          const checkbox = item.querySelector('.party-checkbox');
-          if (selectedIds.includes(p.id)) {
-            checkbox.checked = true;
-          }
-
-          checkbox.addEventListener('change', updateTotals);
           partyListEl.appendChild(item);
+        });
+
+        const checkboxes = document.querySelectorAll('.party-checkbox');
+        checkboxes.forEach(chk => {
+          chk.addEventListener('change', updateTotals);
         });
       }
 
@@ -542,15 +551,6 @@ if (escrutadoEl && Array.isArray(rows) && rows.length > 0) {
       function hideTooltip() {
         if (!barTooltipEl) return;
         barTooltipEl.style.display = 'none';
-      }
-
-      // ===== COMUNICAR ALTURA AL PADRE (AUTO-RESIZE IFRAME) =====
-      function sendHeightToParent() {
-        const height = document.documentElement.scrollHeight;
-        window.parent.postMessage(
-          { type: 'pactometro-resize', height },
-          '*'
-        );
       }
 
       // ===== ACTUALIZAR TOTALES Y BARRA =====
@@ -619,46 +619,37 @@ if (escrutadoEl && Array.isArray(rows) && rows.length > 0) {
         resetBtnEl.addEventListener('click', resetSelection);
       }
 
-      // ===== REFRESCAR DATOS (botón y auto) =====
-      async function refreshData(options = {}) {
-        const keepSelection = options.keepSelection !== false;
-
-        let selectedIds = [];
-        if (keepSelection) {
-          document.querySelectorAll('.party-checkbox:checked').forEach(chk => {
-            selectedIds.push(chk.getAttribute('data-party-id'));
-          });
-        }
-
-        const rows = await loadRowsFromSupabase();
-        buildDataFromRows(rows);
-        updateLastUpdateLabel(rows);
-        renderTable();
-        renderPartyList(selectedIds);
-        updateTotals();
+      // ===== COMUNICAR ALTURA AL PADRE (AUTO-RESIZE IFRAME) =====
+      function sendHeightToParent() {
+        const height = document.documentElement.scrollHeight;
+        window.parent.postMessage(
+          { type: 'pactometro-resize', height },
+          '*'
+        );
       }
 
-      if (reloadBtnEl) {
-        reloadBtnEl.addEventListener('click', () => {
-          refreshData().catch(err => console.error('Error al refrescar datos', err));
-        });
+      // ===== CARGA/REFRESCO COMPLETO =====
+      async function cargarYRenderizar() {
+        const rows = await loadRowsFromSupabase();
+        actualizarMetadatos(rows);
+        construirPartidos(rows);
+        renderTable();
+        renderPartyList();
+        resetSelection(); // limpia selección y recalcula barra
+      }
+
+      if (refreshBtnEl) {
+        refreshBtnEl.addEventListener('click', cargarYRenderizar);
       }
 
       // ===== INICIO =====
-      refreshData({ keepSelection: false }).catch(err =>
-        console.error('Error inicial cargando datos', err)
-      );
+      cargarYRenderizar();
 
       window.addEventListener('load', sendHeightToParent);
       window.addEventListener('resize', () => {
         clearTimeout(window.__pactoResizeTimeout);
         window.__pactoResizeTimeout = setTimeout(sendHeightToParent, 150);
       });
-
-      // Auto-refresh cada 60 segundos
-      setInterval(() => {
-        refreshData().catch(err => console.error('Error en auto-refresh', err));
-      }, 60000);
     });
   </script>
 </body>
