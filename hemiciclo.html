@@ -110,7 +110,7 @@
     }
 
     .party-label {
-      display: block;          /* 👉 ocupa todo el ancho de la celda */
+      display: block;          /* ocupa todo el ancho de la celda */
       width: 100%;
       font-weight: 600;
       color: #fff;
@@ -239,7 +239,7 @@
       <div class="pacto-right">
         <div class="hemiciclo-wrapper">
           <div class="hemiciclo-header-row">
-            <!-- 👉 sólo texto “65 escaños” -->
+            <!-- Sólo texto “65 escaños” -->
             <span class="hemiciclo-title" id="hemiciclo-title">65 escaños</span>
           </div>
 
@@ -442,16 +442,20 @@
         };
       }
 
-      // sector sólido (triángulo + arco) de un semicírculo
-      function createSectorPath(cx, cy, r, startAngle, endAngle) {
-        const start = polarToCartesian(cx, cy, r, startAngle);
-        const end = polarToCartesian(cx, cy, r, endAngle);
-        const largeArcFlag = startAngle - endAngle > Math.PI ? 1 : 0;
+      // aro (donut) de un semicírculo: arco exterior + arco interior
+      function createArcPath(cx, cy, rOuter, rInner, startAngle, endAngle) {
+        const startOuter = polarToCartesian(cx, cy, rOuter, startAngle);
+        const endOuter   = polarToCartesian(cx, cy, rOuter, endAngle);
+        const startInner = polarToCartesian(cx, cy, rInner, endAngle);
+        const endInner   = polarToCartesian(cx, cy, rInner, startAngle);
+
+        const largeArcFlag = Math.abs(endAngle - startAngle) > Math.PI ? 1 : 0;
 
         return [
-          'M', cx, cy,
-          'L', start.x, start.y,
-          'A', r, r, 0, largeArcFlag, 0, end.x, end.y,
+          'M', startOuter.x, startOuter.y,
+          'A', rOuter, rOuter, 0, largeArcFlag, 1, endOuter.x, endOuter.y,   // 👉 arco superior
+          'L', startInner.x, startInner.y,
+          'A', rInner, rInner, 0, largeArcFlag, 0, endInner.x, endInner.y,   // 👉 arco interior hacia atrás
           'Z'
         ].join(' ');
       }
@@ -499,23 +503,25 @@
           .sort((a, b) => ideologyIndex(a.id) - ideologyIndex(b.id));
 
         const cx = 120;
-        const cy = 140;     // centro por debajo del borde inferior
-        const radius = 120;
+        const cy = 140;        // centro justo en la base del SVG
+        const outerRadius = 120;
+        const innerRadius = 80;  // grosor del aro
 
         const totalAngle = Math.PI;      // 180 grados
         let currentAngle = Math.PI;      // empezamos en la izquierda (π rad)
 
         partiesOrdered.forEach((p) => {
-          const portion = p.seats2025 / totalSeats;
+          const portion   = p.seats2025 / totalSeats;
           const angleSpan = portion * totalAngle;
           const startAngle = currentAngle;
-          const endAngle = currentAngle - angleSpan;
+          const endAngle   = currentAngle - angleSpan;
           currentAngle = endAngle;
 
-          const pathData = createSectorPath(
+          const pathData = createArcPath(
             cx,
             cy,
-            radius,
+            outerRadius,
+            innerRadius,
             startAngle,
             endAngle
           );
