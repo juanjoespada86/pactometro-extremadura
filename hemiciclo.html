@@ -110,9 +110,8 @@
     }
 
     .party-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
+      display: block;          /* 👉 ocupa todo el ancho de la celda */
+      width: 100%;
       font-weight: 600;
       color: #fff;
       padding: 2px 4px;
@@ -240,7 +239,8 @@
       <div class="pacto-right">
         <div class="hemiciclo-wrapper">
           <div class="hemiciclo-header-row">
-            <span class="hemiciclo-title">Hemiciclo (65 escaños)</span>
+            <!-- 👉 sólo texto “65 escaños” -->
+            <span class="hemiciclo-title" id="hemiciclo-title">65 escaños</span>
           </div>
 
           <div class="hemiciclo-chart-container" id="hemiciclo-chart-container">
@@ -442,37 +442,16 @@
         };
       }
 
-      function createArcPath(cx, cy, rOuter, rInner, startAngle, endAngle) {
-        const startOuter = polarToCartesian(cx, cy, rOuter, startAngle);
-        const endOuter = polarToCartesian(cx, cy, rOuter, endAngle);
-        const startInner = polarToCartesian(cx, cy, rInner, endAngle);
-        const endInner = polarToCartesian(cx, cy, rInner, startAngle);
-
+      // sector sólido (triángulo + arco) de un semicírculo
+      function createSectorPath(cx, cy, r, startAngle, endAngle) {
+        const start = polarToCartesian(cx, cy, r, startAngle);
+        const end = polarToCartesian(cx, cy, r, endAngle);
         const largeArcFlag = startAngle - endAngle > Math.PI ? 1 : 0;
 
         return [
-          'M',
-          startOuter.x,
-          startOuter.y,
-          'A',
-          rOuter,
-          rOuter,
-          0,
-          largeArcFlag,
-          0,
-          endOuter.x,
-          endOuter.y,
-          'L',
-          startInner.x,
-          startInner.y,
-          'A',
-          rInner,
-          rInner,
-          0,
-          largeArcFlag,
-          1,
-          endInner.x,
-          endInner.y,
+          'M', cx, cy,
+          'L', start.x, start.y,
+          'A', r, r, 0, largeArcFlag, 0, end.x, end.y,
           'Z'
         ].join(' ');
       }
@@ -521,8 +500,7 @@
 
         const cx = 120;
         const cy = 140;     // centro por debajo del borde inferior
-        const outerRadius = 120;
-        const innerRadius = 60;
+        const radius = 120;
 
         const totalAngle = Math.PI;      // 180 grados
         let currentAngle = Math.PI;      // empezamos en la izquierda (π rad)
@@ -534,11 +512,10 @@
           const endAngle = currentAngle - angleSpan;
           currentAngle = endAngle;
 
-          const pathData = createArcPath(
+          const pathData = createSectorPath(
             cx,
             cy,
-            outerRadius,
-            innerRadius,
+            radius,
             startAngle,
             endAngle
           );
