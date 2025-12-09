@@ -67,7 +67,11 @@
       color: #666666;
     }
 
-    .pacto-majority-header,
+    .pacto-majority-header {
+      font-size: 11px;
+      color: #666666;
+    }
+
     .pacto-escrutinio-header {
       font-size: 11px;
       color: #666666;
@@ -110,20 +114,13 @@
       background: #fafafa;
     }
 
-    /* Primera columna: el color ocupa todo el ancho */
-    .party-cell {
-      background: transparent;
-      padding: 0;
-    }
-
-    .party-cell-inner {
-      display: block;
+    .party-label {
+      display: block;          /* ocupa todo el ancho de la celda */
       width: 100%;
-      padding: 4px 6px;
-      color: #ffffff;
       font-weight: 600;
+      color: #fff;
+      padding: 2px 4px;
       border-radius: 2px;
-      box-sizing: border-box;
     }
 
     .diff-positive {
@@ -248,7 +245,8 @@
       <div class="pacto-right">
         <div class="hemiciclo-wrapper">
           <div class="hemiciclo-header-row">
-            <span class="hemiciclo-title">65 escaños</span>
+            <!-- Sólo texto “65 escaños” -->
+            <span class="hemiciclo-title" id="hemiciclo-title">65 escaños</span>
           </div>
 
           <div class="hemiciclo-chart-container" id="hemiciclo-chart-container">
@@ -324,34 +322,6 @@
           });
           lastUpdateEl.textContent = 'Última actualización: ' + texto;
         }
-      }
-
-      // ===== Porcentaje de voto escrutado (campo pct_escrutado) =====
-      const escrutinioHeaderEl =
-        document.getElementById('hemiciclo-escrutinio-header');
-
-      let escrutinioPct = null;
-      if (Array.isArray(rows) && rows.length > 0) {
-        let raw = null;
-        for (const r of rows) {
-          if (r.pct_escrutado != null) {
-            raw = r.pct_escrutado;
-            break;
-          }
-        }
-
-        if (raw != null) {
-          const num = Number(raw);
-          if (!Number.isNaN(num)) {
-            // Si viene como 0–1 lo pasamos a 0–100; si viene ya 0–100 lo dejamos
-            escrutinioPct = num > 1 ? num : num * 100;
-          }
-        }
-      }
-
-      if (escrutinioHeaderEl && escrutinioPct != null) {
-        escrutinioHeaderEl.textContent =
-          'Escrutado: ' + escrutinioPct.toFixed(1) + ' %';
       }
 
       // ===== MAPA DE COLORES FIJO POR PARTIDO =====
@@ -430,6 +400,33 @@
           'Mayoría absoluta: ' + majority + ' escaños';
       }
 
+      // ===== Porcentaje de voto escrutado (si está disponible) =====
+      const escrutinioHeaderEl =
+        document.getElementById('hemiciclo-escrutinio-header');
+
+      let escrutinioPct = null;
+      if (Array.isArray(rows) && rows.length > 0) {
+        // Ajusta aquí el nombre del campo según lo tengas en Supabase
+        const raw =
+          rows[0].escrutinio_pct_2025 ??
+          rows[0].escrutinio_pct ??
+          rows[0].pct_escrutinio ??
+          null;
+
+        if (raw != null) {
+          const num = Number(raw);
+          if (!Number.isNaN(num)) {
+            // Si viene como 0–1 lo pasamos a 0–100
+            escrutinioPct = num > 1 ? num : num * 100;
+          }
+        }
+      }
+
+      if (escrutinioHeaderEl && escrutinioPct != null) {
+        escrutinioHeaderEl.textContent =
+          'Escrutado: ' + escrutinioPct.toFixed(1) + ' %';
+      }
+
       // ===== RENDER TABLA =====
       const tableBodyEl = document.getElementById('hemiciclo-table-body');
 
@@ -456,8 +453,8 @@
               : '–';
 
           row.innerHTML = `
-            <td class="party-cell">
-              <span class="party-cell-inner" style="background:${p.color}">
+            <td>
+              <span class="party-label" style="background:${p.color}">
                 ${p.name}
               </span>
             </td>
@@ -478,38 +475,20 @@
         };
       }
 
+      // aro (donut) de un semicírculo: arco exterior + arco interior
       function createArcPath(cx, cy, rOuter, rInner, startAngle, endAngle) {
         const startOuter = polarToCartesian(cx, cy, rOuter, startAngle);
-        const endOuter = polarToCartesian(cx, cy, rOuter, endAngle);
+        const endOuter   = polarToCartesian(cx, cy, rOuter, endAngle);
         const startInner = polarToCartesian(cx, cy, rInner, endAngle);
-        const endInner = polarToCartesian(cx, cy, rInner, startAngle);
+        const endInner   = polarToCartesian(cx, cy, rInner, startAngle);
 
-        const angleDiff = Math.abs(startAngle - endAngle);
-        const largeArcFlag = angleDiff > Math.PI ? 1 : 0;
+        const largeArcFlag = Math.abs(endAngle - startAngle) > Math.PI ? 1 : 0;
 
         return [
-          'M',
-          startOuter.x,
-          startOuter.y,
-          'A',
-          rOuter,
-          rOuter,
-          0,
-          largeArcFlag,
-          0,
-          endOuter.x,
-          endOuter.y,
-          'L',
-          startInner.x,
-          startInner.y,
-          'A',
-          rInner,
-          rInner,
-          0,
-          largeArcFlag,
-          1,
-          endInner.x,
-          endInner.y,
+          'M', startOuter.x, startOuter.y,
+          'A', rOuter, rOuter, 0, largeArcFlag, 1, endOuter.x, endOuter.y,
+          'L', startInner.x, startInner.y,
+          'A', rInner, rInner, 0, largeArcFlag, 0, endInner.x, endInner.y,
           'Z'
         ].join(' ');
       }
@@ -557,18 +536,18 @@
           .sort((a, b) => ideologyIndex(a.id) - ideologyIndex(b.id));
 
         const cx = 120;
-        const cy = 140;     // centro por debajo del borde inferior
+        const cy = 140;        // centro justo en la base del SVG
         const outerRadius = 120;
-        const innerRadius = 60;
+        const innerRadius = 80;  // grosor del aro
 
         const totalAngle = Math.PI;      // 180 grados
         let currentAngle = Math.PI;      // empezamos en la izquierda (π rad)
 
         partiesOrdered.forEach((p) => {
-          const portion = p.seats2025 / totalSeats;
+          const portion   = p.seats2025 / totalSeats;
           const angleSpan = portion * totalAngle;
           const startAngle = currentAngle;
-          const endAngle = currentAngle - angleSpan;
+          const endAngle   = currentAngle - angleSpan;
           currentAngle = endAngle;
 
           const pathData = createArcPath(
