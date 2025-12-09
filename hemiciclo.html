@@ -39,10 +39,11 @@
       font-size: 14px;
     }
 
+    /* Cabecera principal */
     .pacto-header-row {
       display: flex;
       justify-content: space-between;
-      align-items: baseline;
+      align-items: flex-start;
       gap: 8px;
       margin-bottom: 8px;
       flex-wrap: wrap;
@@ -52,7 +53,21 @@
       font-weight: 600;
     }
 
+    .pacto-header-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+      font-size: 11px;
+      color: #666666;
+    }
+
     .pacto-last-update {
+      font-size: 11px;
+      color: #666666;
+    }
+
+    .pacto-majority-header {
       font-size: 11px;
       color: #666666;
     }
@@ -126,7 +141,7 @@
 
     .hemiciclo-header-row {
       display: flex;
-      justify-content: space-between;
+      justify-content: center;
       align-items: center;
       gap: 8px;
       margin-bottom: 6px;
@@ -136,11 +151,6 @@
 
     .hemiciclo-title {
       font-weight: 500;
-    }
-
-    .hemiciclo-majority {
-      font-size: 12px;
-      color: #555;
     }
 
     .hemiciclo-chart-container {
@@ -174,6 +184,7 @@
       gap: 4px 10px;
       margin-top: 8px;
       font-size: 12px;
+      justify-content: center;
     }
 
     .hemiciclo-legend-item {
@@ -203,7 +214,10 @@
   <div class="pactometro-widget">
     <div class="pacto-header-row">
       <div class="pacto-header">Elecciones Asamblea Extremadura 21D</div>
-      <div class="pacto-last-update" id="hemiciclo-last-update"></div>
+      <div class="pacto-header-meta">
+        <div class="pacto-last-update" id="hemiciclo-last-update"></div>
+        <div class="pacto-majority-header" id="hemiciclo-majority-header"></div>
+      </div>
     </div>
 
     <div class="pacto-layout">
@@ -227,9 +241,6 @@
         <div class="hemiciclo-wrapper">
           <div class="hemiciclo-header-row">
             <span class="hemiciclo-title">Hemiciclo (65 escaños)</span>
-            <span class="hemiciclo-majority" id="hemiciclo-majority-text">
-              Mayoría absoluta: 33 escaños
-            </span>
           </div>
 
           <div class="hemiciclo-chart-container" id="hemiciclo-chart-container">
@@ -285,7 +296,7 @@
 
       const rows = await loadRowsFromSupabase();
 
-      // ===== "Última actualización" =====
+      // ===== "Última actualización" en cabecera =====
       const lastUpdateEl = document.getElementById('hemiciclo-last-update');
       if (lastUpdateEl && Array.isArray(rows) && rows.length > 0) {
         const fechas = rows
@@ -376,10 +387,10 @@
       }
 
       const majority = Math.floor(totalSeats / 2) + 1;
-      const majorityTextEl =
-        document.getElementById('hemiciclo-majority-text');
-      if (majorityTextEl) {
-        majorityTextEl.textContent =
+      const majorityHeaderEl =
+        document.getElementById('hemiciclo-majority-header');
+      if (majorityHeaderEl) {
+        majorityHeaderEl.textContent =
           'Mayoría absoluta: ' + majority + ' escaños';
       }
 
