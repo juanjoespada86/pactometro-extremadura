@@ -401,13 +401,27 @@
         majorityTextEl.textContent  = 'Mayoría: ' + majority;
       }
 
-      // ===== COLORES POR PARTIDO =====
-      const COLOR_MAP = {
-        pp: '#0070c0',
-        psoe: '#e31837',
-        vox: '#53a318',
-        podemosiuav: '#8c2c8d'
-      };
+// ===== COLORES POR PARTIDO =====
+// OJO: las claves son los party_id que vienen de Supabase
+// (generados en update-pactometro.mjs)
+const COLOR_MAP = {
+  pp: '#1E4B8F',              // PP
+  psoe: '#E10025',            // PSOE
+  vox: '#7CBD2A',             // VOX
+
+  // PODEMOS-IU-AV -> party_id "podemosiuav"
+  // pero en pantalla lo mostramos como "Unidas por Extremadura"
+  podemosiuav: '#693269',
+
+  juntoslevanta: '#008036',   // JUNTOS-LEVANTA
+  cs: '#FE5000',              // Cs
+  mundojusto: '#F7C294',      // MUNDO+JUSTO
+  pacma: '#05E94E',           // PACMA
+  nex: '#01C0A9',             // NEX
+  uedsyt: '#128E54',          // UED-SyT
+  extremadura_unida: '#33B142'// EXTREMADURA UNIDA
+};
+
 
       // ===== METADATOS: última actualización + % escrutado =====
       function actualizarMetadatos(rows) {
@@ -654,6 +668,7 @@
   </script>
 </body>
 </html>
+
 
 
 
