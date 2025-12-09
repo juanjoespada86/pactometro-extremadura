@@ -269,7 +269,8 @@
       <div class="pacto-header">Calculadora de pactos 21D</div>
       <div class="pacto-last-update" id="pacto-last-update"></div>
     </div>
-
+<div class="pacto-last-update" id="pacto-escrutado"></div>
+    
     <div class="pacto-layout">
       <!-- IZQUIERDA: TABLA -->
       <div class="pacto-left">
@@ -426,6 +427,19 @@
         });
         lastUpdateEl.textContent = 'Última actualización: ' + texto;
       }
+// ===== "% escrutado" (a partir de pct_escrutado) =====
+const escrutadoEl = document.getElementById('pacto-escrutado');
+if (escrutadoEl && Array.isArray(rows) && rows.length > 0) {
+  const first = rows[0];
+
+  if (first.pct_escrutado != null) {
+    const pct = Number(first.pct_escrutado);
+    if (!Number.isNaN(pct)) {
+      escrutadoEl.textContent =
+        'Escrutado: ' + pct.toFixed(2).replace('.', ',') + ' %';
+    }
+  }
+}
 
       function buildDataFromRows(rows) {
         data.parties = (rows || []).map(row => ({
@@ -649,6 +663,7 @@
   </script>
 </body>
 </html>
+
 
 
 
