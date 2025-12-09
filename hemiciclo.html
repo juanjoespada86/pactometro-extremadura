@@ -479,40 +479,37 @@
         };
       }
 
-      function createArcPath(cx, cy, rOuter, rInner, startAngle, endAngle) {
-        const startOuter = polarToCartesian(cx, cy, rOuter, startAngle);
-        const endOuter = polarToCartesian(cx, cy, rOuter, endAngle);
-        const startInner = polarToCartesian(cx, cy, rInner, endAngle);
-        const endInner = polarToCartesian(cx, cy, rInner, startAngle);
-
+      // En lugar de usar arcos SVG (comando A), generamos un polígono
+      // que aproxima el segmento de anillo. Esto evita problemas de flags
+      // y asegura un semicírculo perfecto visualmente.
+      function createRingSegmentPath(cx, cy, rOuter, rInner, startAngle, endAngle) {
         const angleDiff = Math.abs(startAngle - endAngle);
-        const largeArcFlag = angleDiff > Math.PI ? 1 : 0;
+        const steps = Math.max(8, Math.round(angleDiff / (Math.PI / 32))); // más pasos -> más suave
 
-        return [
-          'M',
-          startOuter.x,
-          startOuter.y,
-          'A',
-          rOuter,
-          rOuter,
-          0,
-          largeArcFlag,
-          0,
-          endOuter.x,
-          endOuter.y,
-          'L',
-          startInner.x,
-          startInner.y,
-          'A',
-          rInner,
-          rInner,
-          0,
-          largeArcFlag,
-          1,
-          endInner.x,
-          endInner.y,
-          'Z'
-        ].join(' ');
+        const pathParts = [];
+
+        // Borde exterior: de startAngle -> endAngle
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps;
+          const angle = startAngle + (endAngle - startAngle) * t;
+          const { x, y } = polarToCartesian(cx, cy, rOuter, angle);
+          if (i === 0) {
+            pathParts.push('M ' + x + ' ' + y);
+          } else {
+            pathParts.push('L ' + x + ' ' + y);
+          }
+        }
+
+        // Borde interior: de endAngle -> startAngle (al revés)
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps;
+          const angle = endAngle + (startAngle - endAngle) * t;
+          const { x, y } = polarToCartesian(cx, cy, rInner, angle);
+          pathParts.push('L ' + x + ' ' + y);
+        }
+
+        pathParts.push('Z');
+        return pathParts.join(' ');
       }
 
       // ===== RENDER HEMICICLO SÓLIDO =====
@@ -572,7 +569,7 @@
           const endAngle = currentAngle - angleSpan;
           currentAngle = endAngle;
 
-          const pathData = createArcPath(
+          const pathData = createRingSegmentPath(
             cx,
             cy,
             outerRadius,
