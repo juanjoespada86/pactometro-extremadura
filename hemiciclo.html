@@ -77,7 +77,6 @@
       color: #666666;
     }
 
-
     .pacto-layout {
       display: flex;
       gap: 16px;
@@ -116,7 +115,8 @@
     }
 
     .party-label {
-      display: block;          /* ocupa todo el ancho de la celda */
+      display: flex;
+      align-items: center;
       width: 100%;
       font-weight: 600;
       color: #fff;
@@ -217,15 +217,13 @@
 </head>
 <body>
   <div class="pactometro-widget">
-<div class="pacto-header-row">
-  <div class="pacto-header">Elecciones Asamblea Extremadura 21D</div>
-  <div class="pacto-header-meta">
-    <div class="pacto-last-update" id="hemiciclo-last-update"></div>
-    <div class="pacto-majority-header" id="hemiciclo-majority-header"></div>
-    <div class="pacto-scrutinio-header" id="hemiciclo-scrutinio-header"></div>
-  </div>
-</div>
-    
+    <div class="pacto-header-row">
+      <div class="pacto-header">Elecciones Asamblea Extremadura 21D</div>
+      <div class="pacto-header-meta">
+        <div class="pacto-last-update" id="hemiciclo-last-update"></div>
+        <div class="pacto-majority-header" id="hemiciclo-majority-header"></div>
+        <div class="pacto-scrutinio-header" id="hemiciclo-scrutinio-header"></div>
+      </div>
     </div>
 
     <div class="pacto-layout">
@@ -248,8 +246,7 @@
       <div class="pacto-right">
         <div class="hemiciclo-wrapper">
           <div class="hemiciclo-header-row">
-            <!-- Sólo texto “65 escaños” -->
-            <span class="hemiciclo-title" id="hemiciclo-title">65 escaños</span>
+            <span class="hemiciclo-title">65 escaños</span>
           </div>
 
           <div class="hemiciclo-chart-container" id="hemiciclo-chart-container">
@@ -379,7 +376,8 @@
             seats2023,
             seats2025,
             diffSeats,
-            vote2025
+            vote2025,
+            pct_escrutado: row.pct_escrutado
           };
         });
 
@@ -403,7 +401,7 @@
           'Mayoría absoluta: ' + majority + ' escaños';
       }
 
-          // ===== PORCENTAJE DE VOTO ESCRUTADO =====
+      // ===== PORCENTAJE DE VOTO ESCRUTADO =====
       let pctEscrutado = null;
 
       if (Array.isArray(rows) && rows.length > 0) {
@@ -414,12 +412,10 @@
           .filter(v => !Number.isNaN(v));
 
         if (values.length > 0) {
-          // Suponemos que todas las filas tienen el mismo valor.
-          // Usamos el máximo por seguridad.
-          let raw = Math.max(...values);
+          let raw = Math.max(...values); // asumimos mismo valor para todas
 
-          // Heurística: si viene en [0,1], lo pasamos a porcentaje
-          if (raw <= 1) {
+          // Si viene entre 0 y 1, lo convertimos a porcentaje
+          if (raw > 0 && raw <= 1) {
             raw = raw * 100;
           }
 
@@ -435,7 +431,6 @@
           'Voto escrutado: ' + pctEscrutado.toFixed(1) + ' %';
       }
 
-      
       // ===== RENDER TABLA =====
       const tableBodyEl = document.getElementById('hemiciclo-table-body');
 
@@ -484,20 +479,38 @@
         };
       }
 
-      // aro (donut) de un semicírculo: arco exterior + arco interior
       function createArcPath(cx, cy, rOuter, rInner, startAngle, endAngle) {
         const startOuter = polarToCartesian(cx, cy, rOuter, startAngle);
-        const endOuter   = polarToCartesian(cx, cy, rOuter, endAngle);
+        const endOuter = polarToCartesian(cx, cy, rOuter, endAngle);
         const startInner = polarToCartesian(cx, cy, rInner, endAngle);
-        const endInner   = polarToCartesian(cx, cy, rInner, startAngle);
+        const endInner = polarToCartesian(cx, cy, rInner, startAngle);
 
-        const largeArcFlag = Math.abs(endAngle - startAngle) > Math.PI ? 1 : 0;
+        const angleDiff = Math.abs(startAngle - endAngle);
+        const largeArcFlag = angleDiff > Math.PI ? 1 : 0;
 
         return [
-          'M', startOuter.x, startOuter.y,
-          'A', rOuter, rOuter, 0, largeArcFlag, 1, endOuter.x, endOuter.y,   // 👉 arco superior
-          'L', startInner.x, startInner.y,
-          'A', rInner, rInner, 0, largeArcFlag, 0, endInner.x, endInner.y,   // 👉 arco interior hacia atrás
+          'M',
+          startOuter.x,
+          startOuter.y,
+          'A',
+          rOuter,
+          rOuter,
+          0,
+          largeArcFlag,
+          0,
+          endOuter.x,
+          endOuter.y,
+          'L',
+          startInner.x,
+          startInner.y,
+          'A',
+          rInner,
+          rInner,
+          0,
+          largeArcFlag,
+          1,
+          endInner.x,
+          endInner.y,
           'Z'
         ].join(' ');
       }
@@ -545,18 +558,18 @@
           .sort((a, b) => ideologyIndex(a.id) - ideologyIndex(b.id));
 
         const cx = 120;
-        const cy = 140;        // centro justo en la base del SVG
+        const cy = 140;     // centro por debajo del borde inferior
         const outerRadius = 120;
-        const innerRadius = 80;  // grosor del aro
+        const innerRadius = 60;
 
         const totalAngle = Math.PI;      // 180 grados
         let currentAngle = Math.PI;      // empezamos en la izquierda (π rad)
 
         partiesOrdered.forEach((p) => {
-          const portion   = p.seats2025 / totalSeats;
+          const portion = p.seats2025 / totalSeats;
           const angleSpan = portion * totalAngle;
           const startAngle = currentAngle;
-          const endAngle   = currentAngle - angleSpan;
+          const endAngle = currentAngle - angleSpan;
           currentAngle = endAngle;
 
           const pathData = createArcPath(
