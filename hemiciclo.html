@@ -72,7 +72,7 @@
       color: #666666;
     }
 
-    .pacto-scrutinio-header {
+    .pacto-scrutiny-header {
       font-size: 11px;
       color: #666666;
     }
@@ -115,8 +115,7 @@
     }
 
     .party-label {
-      display: flex;
-      align-items: center;
+      display: block;          /* ocupa todo el ancho */
       width: 100%;
       font-weight: 600;
       color: #fff;
@@ -222,7 +221,7 @@
       <div class="pacto-header-meta">
         <div class="pacto-last-update" id="hemiciclo-last-update"></div>
         <div class="pacto-majority-header" id="hemiciclo-majority-header"></div>
-        <div class="pacto-scrutinio-header" id="hemiciclo-scrutinio-header"></div>
+        <div class="pacto-scrutiny-header" id="hemiciclo-scrutiny-header"></div>
       </div>
     </div>
 
@@ -266,45 +265,287 @@
   </div>
 
   <script>
-    window.addEventListener('DOMContentLoaded', async function () {
-      // ===== CONFIG SUPABASE =====
-      const SUPABASE_URL = 'https://xllvmudwstmeqvpcbzhs.supabase.co';
-      const SUPABASE_ANON_KEY =
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhsbHZtdWR3c3RtZXF2cGNiemhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2Nzc2NjEsImV4cCI6MjA4MDI1MzY2MX0.cxLTnkEYd8Vj34ISZcQvs_CdRjNE3x4eLl7t9NY_13A';
+    // ===== CONFIG SUPABASE =====
+    const SUPABASE_URL = 'https://xllvmudwstmeqvpcbzhs.supabase.co';
+    const SUPABASE_ANON_KEY =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhsbHZtdWR3c3RtZXF2cGNiemhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2Nzc2NjEsImV4cCI6MjA4MDI1MzY2MX0.cxLTnkEYd8Vj34ISZcQvs_CdRjNE3x4eLl7t9NY_13A';
 
-      async function loadRowsFromSupabase() {
-        try {
-          const res = await fetch(
-            SUPABASE_URL +
-              '/rest/v1/pactometro_results?select=*&order=seats_2025.desc',
-            {
-              headers: {
-                apikey: SUPABASE_ANON_KEY,
-                Authorization: 'Bearer ' + SUPABASE_ANON_KEY
-              }
+    async function loadRowsFromSupabase() {
+      try {
+        const res = await fetch(
+          SUPABASE_URL +
+            '/rest/v1/pactometro_results?select=*&order=seats_2025.desc',
+          {
+            headers: {
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: 'Bearer ' + SUPABASE_ANON_KEY
             }
-          );
-
-          if (!res.ok) {
-            console.error(
-              'Error al cargar datos de Supabase',
-              await res.text()
-            );
-            return [];
           }
+        );
 
-          return await res.json();
-        } catch (err) {
-          console.error('Error de red cargando Supabase', err);
+        if (!res.ok) {
+          console.error(
+            'Error al cargar datos de Supabase',
+            await res.text()
+          );
           return [];
         }
+
+        return await res.json();
+      } catch (err) {
+        console.error('Error de red cargando Supabase', err);
+        return [];
+      }
+    }
+
+    // ===== MAPA DE COLORES FIJO POR PARTIDO =====
+    const COLOR_MAP = {
+      pp: '#1E4B8F',
+      psoe: '#E10025',
+      vox: '#7CBD2A',
+      podemosiuav: '#693269',        // Unidas por Extremadura
+      juntoslevanta: '#008036',
+      cs: '#FE5000',
+      mundojusto: '#F7C294',
+      pacma: '#05E94E',
+      nex: '#01C0A9',
+      uedsyt: '#128E54',
+      extremadura_unida: '#33B142'
+    };
+
+    // Orden ideológico (izquierda -> derecha) por party_id
+    const IDEOLOGICAL_ORDER = [
+      'podemosiuav',        // Unidas por Extremadura
+      'psoe',
+      'juntoslevanta',
+      'extremadura_unida',
+      'pacma',
+      'mundojusto',
+      'nex',
+      'uedsyt',
+      'cs',
+      'pp',
+      'vox'
+    ];
+
+    function ideologyIndex(id) {
+      const idx = IDEOLOGICAL_ORDER.indexOf(id);
+      return idx === -1 ? 999 : idx;
+    }
+
+    // Estado global para poder refrescar
+    let parties = [];
+    let totalSeats = 65;
+    let majority = Math.floor(totalSeats / 2) + 1;
+
+    // ===== RENDER TABLA =====
+    const tableBodyEl = document.getElementById('hemiciclo-table-body');
+
+    function renderTable() {
+      if (!tableBodyEl) return;
+      tableBodyEl.innerHTML = '';
+
+      parties.forEach((p) => {
+        const row = document.createElement('tr');
+
+        let diffText = '–';
+        let diffClass = 'diff-zero';
+        if (p.diffSeats > 0) {
+          diffText = '▲ ' + p.diffSeats;
+          diffClass = 'diff-positive';
+        } else if (p.diffSeats < 0) {
+          diffText = '▼ ' + Math.abs(p.diffSeats);
+          diffClass = 'diff-negative';
+        }
+
+        const voteText =
+          typeof p.vote2025 === 'number'
+            ? p.vote2025.toFixed(1) + ' %'
+            : '–';
+
+        row.innerHTML = `
+          <td>
+            <span class="party-label" style="background:${p.color}">
+              ${p.name}
+            </span>
+          </td>
+          <td>${voteText}</td>
+          <td>${p.seats2025}</td>
+          <td class="${diffClass}">${diffText}</td>
+        `;
+
+        tableBodyEl.appendChild(row);
+      });
+    }
+
+    // ===== HERRAMIENTAS GEOMÉTRICAS PARA EL HEMICICLO =====
+    function polarToCartesian(cx, cy, r, angleRad) {
+      return {
+        x: cx + r * Math.cos(angleRad),
+        y: cy - r * Math.sin(angleRad)
+      };
+    }
+
+    function createArcPath(cx, cy, rOuter, rInner, startAngle, endAngle) {
+      // nos aseguramos de que startAngle >= endAngle (vamos de izquierda a derecha)
+      if (endAngle > startAngle) {
+        const tmp = startAngle;
+        startAngle = endAngle;
+        endAngle = tmp;
       }
 
-      const rows = await loadRowsFromSupabase();
+      const startOuter = polarToCartesian(cx, cy, rOuter, startAngle);
+      const endOuter = polarToCartesian(cx, cy, rOuter, endAngle);
+      const startInner = polarToCartesian(cx, cy, rInner, endAngle);
+      const endInner = polarToCartesian(cx, cy, rInner, startAngle);
 
-      // ===== "Última actualización" en cabecera =====
+      const largeArcFlag = startAngle - endAngle > Math.PI ? 1 : 0;
+
+      return [
+        'M',
+        startOuter.x,
+        startOuter.y,
+        'A',
+        rOuter,
+        rOuter,
+        0,
+        largeArcFlag,
+        0,
+        endOuter.x,
+        endOuter.y,
+        'L',
+        startInner.x,
+        startInner.y,
+        'A',
+        rInner,
+        rInner,
+        0,
+        largeArcFlag,
+        1,
+        endInner.x,
+        endInner.y,
+        'Z'
+      ].join(' ');
+    }
+
+    // ===== RENDER HEMICICLO SÓLIDO =====
+    const svgEl = document.getElementById('hemiciclo-svg');
+    const legendEl = document.getElementById('hemiciclo-legend');
+    const tooltipEl = document.getElementById('hemiciclo-tooltip');
+    const chartContainerEl = document.getElementById(
+      'hemiciclo-chart-container'
+    );
+
+    function showTooltip(evt, party) {
+      if (!tooltipEl || !chartContainerEl) return;
+      const rect = chartContainerEl.getBoundingClientRect();
+      const x = evt.clientX - rect.left;
+      const y = evt.clientY - rect.top;
+
+      const voteText =
+        typeof party.vote2025 === 'number'
+          ? party.vote2025.toFixed(1) + '%'
+          : 'sin dato';
+
+      tooltipEl.style.left = x + 'px';
+      tooltipEl.style.top = y + 'px';
+      tooltipEl.textContent = `${party.name} · ${party.seats2025} escaños · ${voteText} voto`;
+      tooltipEl.style.display = 'block';
+    }
+
+    function hideTooltip() {
+      if (!tooltipEl) return;
+      tooltipEl.style.display = 'none';
+    }
+
+    function renderHemicycle() {
+      if (!svgEl) return;
+
+      while (svgEl.firstChild) {
+        svgEl.removeChild(svgEl.firstChild);
+      }
+
+      // Partidos ordenados ideológicamente (izquierda → derecha)
+      const partiesOrdered = parties
+        .slice()
+        .sort((a, b) => ideologyIndex(a.id) - ideologyIndex(b.id));
+
+      const cx = 120;
+      const cy = 140;     // centro por debajo del borde inferior del viewBox
+      const outerRadius = 120;
+      const innerRadius = 60;
+
+      const totalAngle = Math.PI;      // 180 grados
+      let currentAngle = Math.PI;      // empezamos en la izquierda (π rad)
+
+      partiesOrdered.forEach((p) => {
+        const portion = p.seats2025 / totalSeats;
+        const angleSpan = portion * totalAngle;
+
+        const startAngle = currentAngle;
+        const endAngle = currentAngle - angleSpan;
+        currentAngle = endAngle;
+
+        const pathData = createArcPath(
+          cx,
+          cy,
+          outerRadius,
+          innerRadius,
+          startAngle,
+          endAngle
+        );
+
+        const path = document.createElementNS(
+          'http://www.w3.org/2000/svg',
+          'path'
+        );
+        path.setAttribute('d', pathData);
+        path.setAttribute('fill', p.color);
+        path.setAttribute('stroke', '#ffffff');
+        path.setAttribute('stroke-width', '0.8');
+        path.style.cursor = 'pointer';
+
+        // Interacción: hover + click
+        path.addEventListener('mousemove', (evt) => showTooltip(evt, p));
+        path.addEventListener('mouseenter', (evt) => showTooltip(evt, p));
+        path.addEventListener('mouseleave', hideTooltip);
+        path.addEventListener('click', (evt) => showTooltip(evt, p));
+
+        svgEl.appendChild(path);
+      });
+
+      // Leyenda con partidos representados
+      if (legendEl) {
+        legendEl.innerHTML = '';
+        partiesOrdered.forEach((p) => {
+          const item = document.createElement('div');
+          item.className = 'hemiciclo-legend-item';
+          item.innerHTML = `
+            <span class="hemiciclo-legend-color" style="background:${p.color}"></span>
+            <span>${p.name} (${p.seats2025})</span>
+          `;
+          legendEl.appendChild(item);
+        });
+      }
+    }
+
+    // ===== AUTO-RESIZE PARA IFRAME =====
+    function sendHeightToParent() {
+      const height = document.documentElement.scrollHeight;
+      window.parent.postMessage(
+        { type: 'pactometro-resize', height },
+        '*'
+      );
+    }
+
+    // ===== REFRESCO DE DATOS (tabla + hemiciclo + cabecera) =====
+    async function refreshData() {
+      const rows = await loadRowsFromSupabase();
+      if (!Array.isArray(rows) || rows.length === 0) return;
+
+      // Última actualización
       const lastUpdateEl = document.getElementById('hemiciclo-last-update');
-      if (lastUpdateEl && Array.isArray(rows) && rows.length > 0) {
+      if (lastUpdateEl) {
         const fechas = rows
           .map((r) => r.updated_at)
           .filter(Boolean)
@@ -324,43 +565,25 @@
         }
       }
 
-      // ===== MAPA DE COLORES FIJO POR PARTIDO =====
-      const COLOR_MAP = {
-        pp: '#1E4B8F',
-        psoe: '#E10025',
-        vox: '#7CBD2A',
-        podemosiuav: '#693269',        // Unidas por Extremadura
-        juntoslevanta: '#008036',
-        cs: '#FE5000',
-        mundojusto: '#F7C294',
-        pacma: '#05E94E',
-        nex: '#01C0A9',
-        uedsyt: '#128E54',
-        extremadura_unida: '#33B142'
-      };
-
-      // Orden ideológico (izquierda -> derecha) por party_id
-      const IDEOLOGICAL_ORDER = [
-        'podemosiuav',        // Unidas por Extremadura
-        'psoe',
-        'juntoslevanta',
-        'extremadura_unida',
-        'pacma',
-        'mundojusto',
-        'nex',
-        'uedsyt',
-        'cs',
-        'pp',
-        'vox'
-      ];
-
-      function ideologyIndex(id) {
-        const idx = IDEOLOGICAL_ORDER.indexOf(id);
-        return idx === -1 ? 999 : idx;
+      // % escrutado (tomamos el máximo por si hubiese ligeras diferencias)
+      const scrutinyHeaderEl = document.getElementById(
+        'hemiciclo-scrutiny-header'
+      );
+      if (scrutinyHeaderEl) {
+        const escrutados = rows
+          .map((r) => r.pct_escrutado)
+          .filter((v) => v != null);
+        if (escrutados.length > 0) {
+          const maxPct = Math.max(...escrutados);
+          scrutinyHeaderEl.textContent =
+            'Voto escrutado: ' + maxPct.toFixed(1) + ' %';
+        } else {
+          scrutinyHeaderEl.textContent = '';
+        }
       }
 
-      // ===== Construir estructura de datos (sólo partidos con escaños 2025) =====
-      const parties = (rows || [])
+      // reconstruir parties sólo con escaños 2025
+      parties = (rows || [])
         .filter((row) => (row.seats_2025 || 0) > 0)
         .map((row) => {
           const seats2023 = row.seats_2023 ?? 0;
@@ -376,8 +599,7 @@
             seats2023,
             seats2025,
             diffSeats,
-            vote2025,
-            pct_escrutado: row.pct_escrutado
+            vote2025
           };
         });
 
@@ -385,15 +607,12 @@
       parties.sort((a, b) => b.seats2025 - a.seats2025);
 
       // Total escaños (por si acaso no son exactamente 65)
-      let totalSeats = parties.reduce(
+      totalSeats = parties.reduce(
         (sum, p) => sum + (p.seats2025 || 0),
         0
-      );
-      if (!totalSeats) {
-        totalSeats = 65;
-      }
+      ) || 65;
 
-      const majority = Math.floor(totalSeats / 2) + 1;
+      majority = Math.floor(totalSeats / 2) + 1;
       const majorityHeaderEl =
         document.getElementById('hemiciclo-majority-header');
       if (majorityHeaderEl) {
@@ -401,232 +620,19 @@
           'Mayoría absoluta: ' + majority + ' escaños';
       }
 
-      // ===== PORCENTAJE DE VOTO ESCRUTADO =====
-      let pctEscrutado = null;
-
-      if (Array.isArray(rows) && rows.length > 0) {
-        const values = rows
-          .map(r => r.pct_escrutado)
-          .filter(v => v !== null && v !== undefined)
-          .map(Number)
-          .filter(v => !Number.isNaN(v));
-
-        if (values.length > 0) {
-          let raw = Math.max(...values); // asumimos mismo valor para todas
-
-          // Si viene entre 0 y 1, lo convertimos a porcentaje
-          if (raw > 0 && raw <= 1) {
-            raw = raw * 100;
-          }
-
-          pctEscrutado = raw;
-        }
-      }
-
-      const escrutinioHeaderEl =
-        document.getElementById('hemiciclo-scrutinio-header');
-
-      if (escrutinioHeaderEl && pctEscrutado !== null) {
-        escrutinioHeaderEl.textContent =
-          'Voto escrutado: ' + pctEscrutado.toFixed(1) + ' %';
-      }
-
-      // ===== RENDER TABLA =====
-      const tableBodyEl = document.getElementById('hemiciclo-table-body');
-
-      function renderTable() {
-        if (!tableBodyEl) return;
-        tableBodyEl.innerHTML = '';
-
-        parties.forEach((p) => {
-          const row = document.createElement('tr');
-
-          let diffText = '–';
-          let diffClass = 'diff-zero';
-          if (p.diffSeats > 0) {
-            diffText = '▲ ' + p.diffSeats;
-            diffClass = 'diff-positive';
-          } else if (p.diffSeats < 0) {
-            diffText = '▼ ' + Math.abs(p.diffSeats);
-            diffClass = 'diff-negative';
-          }
-
-          const voteText =
-            typeof p.vote2025 === 'number'
-              ? p.vote2025.toFixed(1) + ' %'
-              : '–';
-
-          row.innerHTML = `
-            <td>
-              <span class="party-label" style="background:${p.color}">
-                ${p.name}
-              </span>
-            </td>
-            <td>${voteText}</td>
-            <td>${p.seats2025}</td>
-            <td class="${diffClass}">${diffText}</td>
-          `;
-
-          tableBodyEl.appendChild(row);
-        });
-      }
-
-      // ===== HERRAMIENTAS GEOMÉTRICAS PARA EL HEMICICLO =====
-      function polarToCartesian(cx, cy, r, angleRad) {
-        return {
-          x: cx + r * Math.cos(angleRad),
-          y: cy - r * Math.sin(angleRad)
-        };
-      }
-
-      // En lugar de usar arcos SVG (comando A), generamos un polígono
-      // que aproxima el segmento de anillo. Esto evita problemas de flags
-      // y asegura un semicírculo perfecto visualmente.
-      function createRingSegmentPath(cx, cy, rOuter, rInner, startAngle, endAngle) {
-        const angleDiff = Math.abs(startAngle - endAngle);
-        const steps = Math.max(8, Math.round(angleDiff / (Math.PI / 32))); // más pasos -> más suave
-
-        const pathParts = [];
-
-        // Borde exterior: de startAngle -> endAngle
-        for (let i = 0; i <= steps; i++) {
-          const t = i / steps;
-          const angle = startAngle + (endAngle - startAngle) * t;
-          const { x, y } = polarToCartesian(cx, cy, rOuter, angle);
-          if (i === 0) {
-            pathParts.push('M ' + x + ' ' + y);
-          } else {
-            pathParts.push('L ' + x + ' ' + y);
-          }
-        }
-
-        // Borde interior: de endAngle -> startAngle (al revés)
-        for (let i = 0; i <= steps; i++) {
-          const t = i / steps;
-          const angle = endAngle + (startAngle - endAngle) * t;
-          const { x, y } = polarToCartesian(cx, cy, rInner, angle);
-          pathParts.push('L ' + x + ' ' + y);
-        }
-
-        pathParts.push('Z');
-        return pathParts.join(' ');
-      }
-
-      // ===== RENDER HEMICICLO SÓLIDO =====
-      const svgEl = document.getElementById('hemiciclo-svg');
-      const legendEl = document.getElementById('hemiciclo-legend');
-      const tooltipEl = document.getElementById('hemiciclo-tooltip');
-      const chartContainerEl = document.getElementById(
-        'hemiciclo-chart-container'
-      );
-
-      function showTooltip(evt, party) {
-        if (!tooltipEl || !chartContainerEl) return;
-        const rect = chartContainerEl.getBoundingClientRect();
-        const x = evt.clientX - rect.left;
-        const y = evt.clientY - rect.top;
-
-        const voteText =
-          typeof party.vote2025 === 'number'
-            ? party.vote2025.toFixed(1) + '%'
-            : 'sin dato';
-
-        tooltipEl.style.left = x + 'px';
-        tooltipEl.style.top = y + 'px';
-        tooltipEl.textContent = `${party.name} · ${party.seats2025} escaños · ${voteText} voto`;
-        tooltipEl.style.display = 'block';
-      }
-
-      function hideTooltip() {
-        if (!tooltipEl) return;
-        tooltipEl.style.display = 'none';
-      }
-
-      function renderHemicycle() {
-        if (!svgEl) return;
-
-        while (svgEl.firstChild) {
-          svgEl.removeChild(svgEl.firstChild);
-        }
-
-        // Partidos ordenados ideológicamente (izquierda → derecha)
-        const partiesOrdered = parties
-          .slice()
-          .sort((a, b) => ideologyIndex(a.id) - ideologyIndex(b.id));
-
-        const cx = 120;
-        const cy = 140;     // centro por debajo del borde inferior
-        const outerRadius = 120;
-        const innerRadius = 60;
-
-        const totalAngle = Math.PI;      // 180 grados
-        let currentAngle = Math.PI;      // empezamos en la izquierda (π rad)
-
-        partiesOrdered.forEach((p) => {
-          const portion = p.seats2025 / totalSeats;
-          const angleSpan = portion * totalAngle;
-          const startAngle = currentAngle;
-          const endAngle = currentAngle - angleSpan;
-          currentAngle = endAngle;
-
-          const pathData = createRingSegmentPath(
-            cx,
-            cy,
-            outerRadius,
-            innerRadius,
-            startAngle,
-            endAngle
-          );
-
-          const path = document.createElementNS(
-            'http://www.w3.org/2000/svg',
-            'path'
-          );
-          path.setAttribute('d', pathData);
-          path.setAttribute('fill', p.color);
-          path.setAttribute('stroke', '#ffffff');
-          path.setAttribute('stroke-width', '0.8');
-          path.style.cursor = 'pointer';
-
-          // Interacción: hover + click
-          path.addEventListener('mousemove', (evt) => showTooltip(evt, p));
-          path.addEventListener('mouseenter', (evt) => showTooltip(evt, p));
-          path.addEventListener('mouseleave', hideTooltip);
-          path.addEventListener('click', (evt) => showTooltip(evt, p));
-
-          svgEl.appendChild(path);
-        });
-
-        // Leyenda con partidos representados
-        if (legendEl) {
-          legendEl.innerHTML = '';
-          partiesOrdered.forEach((p) => {
-            const item = document.createElement('div');
-            item.className = 'hemiciclo-legend-item';
-            item.innerHTML = `
-              <span class="hemiciclo-legend-color" style="background:${p.color}"></span>
-              <span>${p.name} (${p.seats2025})</span>
-            `;
-            legendEl.appendChild(item);
-          });
-        }
-      }
-
-      // ===== AUTO-RESIZE PARA IFRAME =====
-      function sendHeightToParent() {
-        const height = document.documentElement.scrollHeight;
-        window.parent.postMessage(
-          { type: 'pactometro-resize', height },
-          '*'
-        );
-      }
-
-      // ===== INICIO =====
       renderTable();
       renderHemicycle();
       sendHeightToParent();
+    }
 
-      window.addEventListener('load', sendHeightToParent);
+    // ===== INICIO =====
+    window.addEventListener('DOMContentLoaded', function () {
+      // primera carga
+      refreshData();
+
+      // auto-actualización cada 5 minutos
+      setInterval(refreshData, 5 * 60 * 1000);
+
       window.addEventListener('resize', () => {
         clearTimeout(window.__hemicicloResizeTimeout);
         window.__hemicicloResizeTimeout = setTimeout(
