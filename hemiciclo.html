@@ -62,16 +62,8 @@
       color: #666666;
     }
 
-    .pacto-last-update {
-      font-size: 11px;
-      color: #666666;
-    }
-
-    .pacto-majority-header {
-      font-size: 11px;
-      color: #666666;
-    }
-
+    .pacto-last-update,
+    .pacto-majority-header,
     .pacto-scrutiny-header {
       font-size: 11px;
       color: #666666;
@@ -386,46 +378,46 @@
       };
     }
 
+    // Ahora creamos cada porción como un polígono que sigue el arco,
+    // sin usar el comando A de SVG, para evitar inversiones raras.
     function createArcPath(cx, cy, rOuter, rInner, startAngle, endAngle) {
-      // nos aseguramos de que startAngle >= endAngle (vamos de izquierda a derecha)
+      // Nos aseguramos de que startAngle > endAngle (semi de izquierda a derecha)
       if (endAngle > startAngle) {
         const tmp = startAngle;
         startAngle = endAngle;
         endAngle = tmp;
       }
 
-      const startOuter = polarToCartesian(cx, cy, rOuter, startAngle);
-      const endOuter = polarToCartesian(cx, cy, rOuter, endAngle);
-      const startInner = polarToCartesian(cx, cy, rInner, endAngle);
-      const endInner = polarToCartesian(cx, cy, rInner, startAngle);
+      const angleSpan = startAngle - endAngle;
+      const steps = Math.max(6, Math.round((angleSpan / Math.PI) * 40));
 
-      const largeArcFlag = startAngle - endAngle > Math.PI ? 1 : 0;
+      const outer = [];
+      const inner = [];
 
-      return [
-        'M',
-        startOuter.x,
-        startOuter.y,
-        'A',
-        rOuter,
-        rOuter,
-        0,
-        largeArcFlag,
-        0,
-        endOuter.x,
-        endOuter.y,
-        'L',
-        startInner.x,
-        startInner.y,
-        'A',
-        rInner,
-        rInner,
-        0,
-        largeArcFlag,
-        1,
-        endInner.x,
-        endInner.y,
-        'Z'
-      ].join(' ');
+      // Arco exterior de start -> end
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const angle = startAngle - t * angleSpan;
+        outer.push(polarToCartesian(cx, cy, rOuter, angle));
+      }
+
+      // Arco interior de end -> start (para cerrar el anillo)
+      for (let i = steps; i >= 0; i--) {
+        const t = i / steps;
+        const angle = startAngle - t * angleSpan;
+        inner.push(polarToCartesian(cx, cy, rInner, angle));
+      }
+
+      const path = [];
+      path.push('M', outer[0].x, outer[0].y);
+      for (let i = 1; i < outer.length; i++) {
+        path.push('L', outer[i].x, outer[i].y);
+      }
+      for (let i = 0; i < inner.length; i++) {
+        path.push('L', inner[i].x, inner[i].y);
+      }
+      path.push('Z');
+      return path.join(' ');
     }
 
     // ===== RENDER HEMICICLO SÓLIDO =====
@@ -651,3 +643,4 @@
   </script>
 </body>
 </html>
+
